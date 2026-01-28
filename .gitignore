@@ -64,4 +64,4 @@ Thumbs.db
 instance/
 .webassets-cache
 
-.mp4
+*.mp4

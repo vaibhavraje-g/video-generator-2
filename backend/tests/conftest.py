@@ -13,6 +13,22 @@ from app.services.auth_service import AuthService
 
 fake = Faker()
 
+_MONGO_ALIVE = None
+
+async def check_mongo_alive():
+    global _MONGO_ALIVE
+    if _MONGO_ALIVE is not None:
+        return _MONGO_ALIVE
+    try:
+        check_client = AsyncIOMotorClient(settings.MONGODB_URL, serverSelectionTimeoutMS=800)
+        await check_client.admin.command('ping')
+        check_client.close()
+        _MONGO_ALIVE = True
+    except Exception:
+        _MONGO_ALIVE = False
+    return _MONGO_ALIVE
+
+
 # Test database name
 TEST_DB_NAME = "video_generator_test"
 
@@ -21,8 +37,11 @@ TEST_DB_NAME = "video_generator_test"
 async def test_db():
     """
     Create a test database connection
-    Automatically cleans up after tests
+    Automatically cleans up after tests, or skips gracefully if MongoDB is offline.
     """
+    if not await check_mongo_alive():
+        pytest.skip(f"MongoDB not running locally on {settings.MONGODB_URL}; skipping database integration test.")
+
     # Override database name for tests
     original_db_name = settings.MONGODB_DB_NAME
     settings.MONGODB_DB_NAME = TEST_DB_NAME
@@ -34,13 +53,13 @@ async def test_db():
     yield db
     
     # Cleanup: drop all collections
-    for collection_name in await db.list_collection_names():
-        await db.drop_collection(collection_name)
+    try:
+        for collection_name in await db.list_collection_names():
+            await db.drop_collection(collection_name)
+        await MongoDB.close_db()
+    except Exception:
+        pass
     
-    # Close connection
-    await MongoDB.close_db()
-    
-    # Restore original database name
     settings.MONGODB_DB_NAME = original_db_name
 
 

@@ -1,90 +1,79 @@
-# Video Generator - Full Stack Application
+# 🎬 Video Generator - Full Stack GenAI Platform
 
-A full-stack video generation platform with authentication, project management, and AI-powered Family Guy style educational videos.
+An automated AI-driven video creation platform that transforms raw documents, research papers, and web URLs into scene-level structured scripts, multimodal assets, and synchronized video drafts.
 
-## Structure
+![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi&logoColor=white)
+![Angular](https://img.shields.io/badge/Angular-17-dd0031?logo=angular&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-4.4+-47A248?logo=mongodb&logoColor=white)
+![WebSockets](https://img.shields.io/badge/WebSockets-Realtime-010101?logo=socketdotio&logoColor=white)
+
+---
+
+## 🏛️ System Architecture & Workflow Pipeline
+
+```
+┌─────────────────┐      ┌─────────────────────────┐      ┌─────────────────────────┐
+│ Raw Document /  │ ───► │ Context Ingestion &     │ ───► │ Scene-Level Script      │
+│ Article URL     │      │ Text Chunking (FastAPI) │      │ Generation (LLM Engine) │
+└─────────────────┘      └─────────────────────────┘      └────────────┬────────────┘
+                                                                       │
+                                                                       ▼
+┌─────────────────┐      ┌─────────────────────────┐      ┌─────────────────────────┐
+│ Video Preview & │ ◄─── │ Real-time WebSocket     │ ◄─── │ Asset Retrieval & Frame │
+│ Timeline Editor │      │ Progress Streaming      │      │ Alignment (Pinecone/DB) │
+└─────────────────┘      └─────────────────────────┘      └─────────────────────────┘
+```
+
+---
+
+## 🚀 Core Capabilities
+
+1. **📄 Automated Document Ingestion**: Ingests PDFs, Markdown, Word documents, or web URLs with intelligent summarization.
+2. **🎭 Scene-by-Scene Script Generation**: Uses LLMs to generate structured JSON scene definitions with narration voiceover, visual cues, and duration timings.
+3. **🔍 Semantic Asset Matching**: Retrieves relevant stock imagery, animations, and video b-roll from vector storage using embedding similarity.
+4. **⚡ Real-time Progress Streaming**: WebSocket communication provides real-time generation logs and step-by-step progress to the Angular UI.
+5. **🎛️ Interactive Timeline Editor**: Angular frontend allows creators to tweak narration lines, swap assets, and adjust scene durations prior to final rendering.
+
+---
+
+## 🛠️ Repository Layout
 
 ```
 video-generator/
-├── backend/           # FastAPI backend with MongoDB
-│   ├── app/          # Application code
-│   ├── tests/        # Test suite
-│   └── docs/         # Documentation
-├── frontend/         # Frontend application (to be added)
-├── assets/           # Shared assets (characters, videos)
-└── README.md         # This file
+├── backend/
+│   ├── app/
+│   │   ├── api/              # FastAPI route controllers
+│   │   ├── core/             # Configuration & security utilities
+│   │   ├── models/           # MongoDB ODM schemas
+│   │   └── services/         # Generation pipeline & media logic
+│   ├── tests/                # E2E integration test suite
+│   └── requirements.txt      # Python dependencies
+├── frontend/                 # Angular 17 presentation client
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── components/   # Context ingestion, video timeline player
+│   │   │   └── services/     # WebSocket & generation API clients
+│   │   └── styles/           # Modern UI styling
+│   └── package.json          # Frontend dependencies
+└── AGENTS.md                 # Autonomous engineering directives
 ```
 
-## Quick Start
+---
 
-### Prerequisites
-
-- Python 3.9+
-- MongoDB 4.4+
-- Node.js 16+ (for frontend)
-- FFmpeg
-
-### Backend Setup
-
-See [backend/README.md](backend/README.md) for detailed instructions.
-
-```bash
-cd backend
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload
-```
-
-### Frontend Setup
-
-```bash
-cd frontend
-# Instructions to be added once frontend is implemented
-```
-
-## Features
+## ⚙️ Setup & Installation
 
 ### Backend
-- ✅ JWT authentication (login/register)
-- ✅ MongoDB with async Motor driver
-- ✅ Project management with user isolation
-- ✅ Video generation with status tracking
-- ✅ Comprehensive test suite
-- ✅ API documentation (Swagger/OpenAPI)
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
 
-### Frontend (To be implemented)
-- Login/Register pages
-- Dashboard with projects
-- Project detail with video history
-- Video generation form
-- Video player
-
-## Documentation
-
-- [Backend API Documentation](backend/docs/frontend_requirements.md)
-- [Implementation Plan](.gemini/antigravity/brain/c602a646-fcb4-4e10-b303-d7b3a1b8ff3b/implementation_plan.md)
-
-## Architecture
-
-**Backend**: FastAPI + MongoDB
-- RESTful API with JWT auth
-- Async video generation
-- Background task processing
-
-**Frontend**: (Your choice - React/Vue/Angular recommended)
-- See `backend/docs/frontend_requirements.md` for detailed UI specs
-
-**Database**: MongoDB
-- Users collection
-- Projects collection
-- Videos collection
-
-## Contributing
-
-1. Create a feature branch
-2. Make your changes
-3. Write tests
-4. Submit a pull request
-
-## License
-
-MIT
+### Frontend
+```bash
+cd frontend
+npm install
+npm run start
+```

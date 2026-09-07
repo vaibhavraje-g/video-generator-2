@@ -55,7 +55,7 @@ def test_project_in_db():
     )
     
     assert project.name == "Test Project"
-    assert project.user_id == user_id
+    assert str(project.user_id) == str(user_id)
     assert isinstance(project.created_at, datetime)
 
 
@@ -64,11 +64,11 @@ def test_video_create_validation():
     video_data = VideoCreate(
         project_id=str(ObjectId()),
         topic="Test topic",
-        video_type=VideoType.FAMILY_GUY
+        generator_id="family_guy"
     )
     
     assert video_data.topic == "Test topic"
-    assert video_data.video_type == VideoType.FAMILY_GUY
+    assert video_data.generator_id == "family_guy"
 
 
 def test_video_status_enum():
@@ -88,7 +88,7 @@ def test_video_in_db_defaults():
         project_id=project_id,
         user_id=user_id,
         topic="Test topic",
-        video_type=VideoType.FAMILY_GUY
+        generator_id="family_guy"
     )
     
     assert video.status == VideoStatus.PENDING

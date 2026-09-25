@@ -4,304 +4,306 @@ import { ActivatedRoute, RouterLink, Router } from '@angular/router';
 import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ApiService, Project, Video } from '../services/api.service';
 import { ThemeService } from '../services/theme.service';
-import { WebSocketService, VideoProgress } from '../services/websocket.service';
+import { SseService, VideoProgressEvent } from '../services/sse.service';
 import { Subscription } from 'rxjs';
+import { SidebarComponent } from '../components/sidebar/sidebar.component';
+import { AgentPipelineComponent } from '../components/agent-pipeline/agent-pipeline.component';
 
 @Component({
   selector: 'app-project-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, DatePipe],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, DatePipe, SidebarComponent, AgentPipelineComponent],
   template: `
-    <div class="flex h-screen bg-white dark:bg-slate-950 overflow-hidden transition-colors duration-300">
-      <!-- Sidebar (Collapsible) -->
-      <aside 
-        [class]="sidebarOpen() ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
-        class="fixed md:relative z-40 w-64 h-full flex-col bg-gray-50 dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 transition-all duration-300 flex">
-        <div class="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-8 rounded-lg bg-amber-600 flex items-center justify-center text-white font-bold shadow-sm">V</div>
-            <span class="font-bold text-gray-900 dark:text-white">VidGen AI</span>
-          </div>
-          <!-- Close button (mobile) -->
-          <button (click)="sidebarOpen.set(false)" class="md:hidden text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-white">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        
-        <div class="p-3">
-          <a routerLink="/dashboard" class="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-gray-200 dark:hover:border-slate-700/50">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            New Project
-          </a>
-        </div>
+    <div class="flex h-screen bg-[#131314] text-[#E3E3E3] overflow-hidden font-sans">
+      
+      <!-- Shared Studio Sidebar -->
+      <app-sidebar 
+        [isOpen]="sidebarOpen()"
+        [activeProjectId]="project()?._id || null"
+        (sidebarClose)="sidebarOpen.set(false)">
+      </app-sidebar>
 
-        <div class="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-          <h3 class="px-3 text-xs font-medium text-gray-500 dark:text-slate-500 uppercase tracking-wider mb-2">History</h3>
-          @for (p of api.projects(); track p._id) {
-            <a [routerLink]="['/projects', p._id]" 
-               (click)="sidebarOpen.set(false)"
-               [class.bg-gray-200]="p._id === project()?._id"
-               [class.dark:bg-slate-800]="p._id === project()?._id"
-               [class.text-gray-900]="p._id === project()?._id"
-               [class.dark:text-white]="p._id === project()?._id"
-               class="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg transition-colors truncate group">
-              <svg class="w-4 h-4 text-gray-400 dark:text-slate-600 group-hover:text-gray-600 dark:group-hover:text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+      <!-- Main Studio Workspace -->
+      <main class="flex-1 flex flex-col h-full relative overflow-hidden bg-[#131314]">
+        
+        <!-- Studio Header -->
+        <header class="h-14 border-b border-[#2E3135] bg-[#1E1F20] flex items-center justify-between px-4 sm:px-6 z-10 sticky top-0">
+          <div class="flex items-center gap-3">
+            <button 
+              (click)="sidebarOpen.set(true)"
+              aria-label="Open sidebar"
+              class="md:hidden text-[#80868B] hover:text-[#F1F3F4] p-1 rounded hover:bg-[#282A2D] focus-visible:ring-1 focus-visible:ring-[#D97757]">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
-              <span class="truncate">{{ p.name }}</span>
-            </a>
+            </button>
+            <div>
+              <h2 class="font-editorial font-semibold text-xs sm:text-sm text-[#F1F3F4] truncate max-w-[200px] sm:max-w-md">
+                {{ project()?.name || 'Loading Project...' }}
+              </h2>
+              <div class="flex items-center gap-2 text-[10px] font-mono text-[#80868B]">
+                <span>Studio Canvas</span>
+                <span>•</span>
+                <span>Server-Sent Events</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- SSE Status Badge -->
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono border bg-[#131314]"
+                 [class.border-emerald-700]="sseService.isConnected()"
+                 [class.text-[#81C995]]="sseService.isConnected()"
+                 [class.border-[#2E3135]]="!sseService.isConnected()"
+                 [class.text-[#80868B]]="!sseService.isConnected()">
+              <span class="w-1.5 h-1.5 rounded-full" 
+                    [class.bg-[#81C995]]="sseService.isConnected()" 
+                    [class.bg-[#80868B]]="!sseService.isConnected()"></span>
+              <span>{{ sseService.isConnected() ? 'SSE Connected' : 'SSE Standby' }}</span>
+            </div>
+
+            <!-- Delete Project Button -->
+            <button 
+              (click)="deleteProject()" 
+              title="Delete Project"
+              aria-label="Delete Project"
+              class="text-[#80868B] hover:text-[#F28B82] p-1.5 rounded hover:bg-[#282A2D] transition-colors focus-visible:ring-1 focus-visible:ring-[#F28B82]">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- Generation & Video Stream Viewport -->
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6" #scrollContainer>
+          @for (video of videos(); track video._id) {
+            
+            <!-- User Prompt Capsule -->
+            <div class="flex justify-end">
+              <div class="max-w-[92%] sm:max-w-[75%] bg-[#1E1F20] border border-[#2E3135] rounded-lg p-3.5 text-[#E3E3E3] shadow-sm">
+                <div class="flex items-center justify-between mb-1.5 text-[10px] font-mono text-[#80868B]">
+                  <span class="font-semibold text-[#D97757]">CREATIVE BRIEF</span>
+                  <span>{{ video.created_at | date:'shortTime' }}</span>
+                </div>
+                <p class="text-xs sm:text-sm text-[#F1F3F4] leading-relaxed font-normal">{{ video.topic }}</p>
+                <div class="mt-2 pt-2 border-t border-[#2E3135] flex flex-wrap items-center justify-end gap-2 text-[10px] font-mono text-[#80868B]">
+                  <span class="px-2 py-0.5 rounded-full bg-[#131314] border border-[#2E3135]">Ratio: {{ video.video_config?.aspect_ratio || "9:16" }}</span>
+                  <span class="px-2 py-0.5 rounded-full bg-[#131314] border border-[#2E3135]">{{ formatGeneratorName(video.generator_id) }}</span>
+                  <span class="px-2 py-0.5 rounded-full bg-[#131314] text-[#BDC1C6] border border-[#2E3135]">1080p Master</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Studio Production Stage Output -->
+            <div class="flex justify-start">
+              <div class="max-w-2xl w-full">
+                
+                <div class="bg-[#1E1F20] rounded-lg p-4 sm:p-5 w-full border border-[#2E3135] shadow-sm">
+                  
+                  @if (video.status === 'completed') {
+                    <!-- Completed Video Player Theater -->
+                    <div class="space-y-3.5">
+                      <div [ngStyle]="getContainerStyles(video.video_config?.aspect_ratio)" 
+                           class="relative rounded-md overflow-hidden bg-black mx-auto shadow border border-[#2E3135] flex items-center justify-center">
+                        @if (video.video_url) {
+                          <video 
+                            controls 
+                            playsinline
+                            class="w-full h-full object-contain"
+                            preload="metadata">
+                            <source [src]="getVideoUrl(video.video_url)" type="video/mp4">
+                            Your browser does not support the video tag.
+                          </video>
+                        } @else {
+                          <div class="w-full h-full flex flex-col items-center justify-center p-6 text-center text-[#80868B] space-y-2">
+                            <div class="animate-spin rounded-full h-6 w-6 border-2 border-[#D97757] border-t-transparent"></div>
+                            <span class="text-xs font-mono">Synchronizing media stream...</span>
+                          </div>
+                        }
+                      </div>
+
+                      <!-- Video Controls & Metadata Bar -->
+                      <div class="pt-2.5 border-t border-[#2E3135] flex flex-wrap items-center justify-between gap-2.5">
+                        <div class="flex items-center gap-2">
+                          <span class="px-2.5 py-0.5 rounded-full bg-[#81C995]/10 text-[#81C995] border border-[#81C995]/30 text-[11px] font-mono font-medium flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Completed (100%)
+                          </span>
+                          <span class="text-[11px] font-mono text-[#80868B]">1080p Master</span>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                          <button (click)="toggleManifest(video._id)" 
+                                  class="btn-secondary px-2.5 py-1 text-xs flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-[#80868B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Specs</span>
+                          </button>
+
+                          @if (video.video_url) {
+                            <a [href]="getVideoUrl(video.video_url)" 
+                               target="_blank" 
+                               download 
+                               class="btn-primary px-3 py-1 text-xs flex items-center gap-1">
+                              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                              <span>Download MP4</span>
+                            </a>
+                          }
+                        </div>
+                      </div>
+
+                      <!-- Technical Manifest Drawer -->
+                      @if (isManifestOpen(video._id)) {
+                        <div class="p-3 rounded-md bg-[#131314] border border-[#2E3135] text-[11px] font-mono space-y-2">
+                          <div class="font-semibold text-[#BDC1C6] flex items-center justify-between border-b border-[#2E3135] pb-1">
+                            <span>{{ video.generator_id === 'frequency' ? 'ACOUSTIC DSP EXECUTION TRACE' : 'MULTI-AGENT EXECUTION TRACE' }}</span>
+                            <span class="text-[10px] text-[#80868B]">SSE Event Driven</span>
+                          </div>
+                          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[#80868B] text-[10px]">
+                            @if (video.generator_id === 'frequency') {
+                              <div><span class="text-[#BDC1C6]">Acoustic Engine:</span> Native FFmpeg DSP + Lissajous Vectorscope</div>
+                              <div><span class="text-[#BDC1C6]">Format & Ratio:</span> {{ video.video_config?.aspect_ratio || "9:16" }} • 1080p 60fps</div>
+                              <div><span class="text-[#BDC1C6]">Audio Pipeline:</span> 320kbps Stereo Binaural Sine (Phase Aligned)</div>
+                              <div><span class="text-[#BDC1C6]">Visualizer:</span> Real-Time Phase Vectorscope + Oscilloscope HUD</div>
+                            } @else {
+                              <div><span class="text-[#BDC1C6]">Generator Engine:</span> {{ formatGeneratorName(video.generator_id) }}</div>
+                              <div><span class="text-[#BDC1C6]">Format & Ratio:</span> {{ video.video_config?.aspect_ratio || "9:16" }} • 1080p 60fps</div>
+                              <div><span class="text-[#BDC1C6]">Audio Pipeline:</span> Zero-Shot Neural Voice Clone (:8004)</div>
+                              <div><span class="text-[#BDC1C6]">Compositor:</span> FFmpeg Multi-Layer GPU/CPU Worker</div>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  } @else if (video.status === 'failed') {
+                    <!-- Error / Failed Pipeline Card -->
+                    <div class="p-4 rounded-md bg-[#F28B82]/10 border border-[#F28B82]/30 text-left space-y-2">
+                      <div class="flex items-center gap-2 text-[#F28B82] text-xs font-semibold">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span>Pipeline Error</span>
+                      </div>
+                      <p class="text-xs text-[#80868B] leading-relaxed font-mono">
+                        {{ video.error_message || 'Video pipeline interrupted. Please check input parameters and retry.' }}
+                      </p>
+                    </div>
+                  } @else {
+                    <!-- Stepper Component -->
+                    <app-agent-pipeline 
+                      [progress]="getProgress(video._id)"
+                      [stepText]="getStepText(video._id)"
+                      [pipelineType]="video.generator_id === 'frequency' ? 'frequency' : 'explainer'">
+                    </app-agent-pipeline>
+                  }
+
+                </div>
+              </div>
+            </div>
+          } @empty {
+            <!-- Empty State -->
+            <div class="h-full flex flex-col items-center justify-center text-center p-8 max-w-sm mx-auto space-y-3">
+              <div class="w-10 h-10 rounded-md bg-[#1E1F20] border border-[#2E3135] flex items-center justify-center text-[#80868B]">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 class="font-editorial font-medium text-sm text-[#F1F3F4]">Studio Ready</h3>
+              <p class="text-xs text-[#80868B] leading-relaxed">
+                Enter an acoustic frequency prompt or narrative topic below to begin generating.
+              </p>
+            </div>
           }
         </div>
 
-        <div class="p-4 border-t border-gray-200 dark:border-slate-800 space-y-2">
-            <!-- Theme Toggle -->
-           <button (click)="themeService.toggle()" class="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white w-full transition-colors px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800">
-             @if (themeService.isDark()) {
-               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-               </svg>
-               <span>Light Mode</span>
-             } @else {
-               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-               </svg>
-               <span>Dark Mode</span>
-             }
-           </button>
-
-           <!-- Profile Link -->
-           <a routerLink="/profile" (click)="sidebarOpen.set(false)" class="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white w-full transition-colors px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800">
-             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-             </svg>
-             <span>Profile</span>
-           </a>
-
-           <button (click)="api.logout(); router.navigate(['/login'])" class="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white w-full transition-colors px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Sign Out
-          </button>
-        </div>
-      </aside>
-
-      <!-- Sidebar overlay (mobile) -->
-      @if (sidebarOpen()) {
-        <div (click)="sidebarOpen.set(false)" class="fixed inset-0 bg-black/50 z-30 md:hidden"></div>
-      }
-
-      <!-- Main Chat Interface -->
-      <main class="flex-1 flex flex-col h-full relative">
-        <!-- Chat Header -->
-        <header class="h-14 border-b border-gray-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/50 backdrop-blur flex items-center justify-between px-4 z-10 transition-colors">
-          <div class="flex items-center gap-3">
-             <!-- Hamburger menu button -->
-             <button (click)="sidebarOpen.set(!sidebarOpen())" class="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white">
-               <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-               </svg>
-             </button>
-             <h2 class="font-semibold text-gray-900 dark:text-white truncate max-w-[200px] sm:max-w-md">{{ project()?.name }}</h2>
-          </div>
-          <button (click)="deleteProject()" class="text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-colors">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
-        </header>
-
-        <!-- Chat Stream -->
-        <div class="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth" #scrollContainer>
-           @for (video of videos(); track video._id) {
-             <!-- User Prompt Bubble -->
-             <div class="flex justify-end">
-               <div class="max-w-[85%] sm:max-w-[70%] bg-amber-100 dark:bg-slate-800 rounded-2xl rounded-tr-sm px-4 py-3 text-gray-900 dark:text-slate-200 shadow-sm dark:shadow-none">
-                 <p>{{ video.topic }}</p>
-                 <div class="mt-1 flex items-center justify-end gap-2 text-xs text-gray-500 dark:text-slate-500">
-                    <span>{{ video.video_config?.aspect_ratio || "9:16" }}</span>
-                    <span>•</span>
-                    <span class="capitalize">{{ video.generator_id?.replace('_', ' ') || 'unknown' }}</span>
-                    @if (video.video_config?.duration) {
-                      <span>•</span>
-                      <span class="capitalize">{{ video.video_config?.duration }}</span>
-                    }
-                 </div>
-               </div>
-             </div>
-
-             <!-- AI Response Bubble -->
-             <div class="flex justify-start">
-                <div class="flex gap-3 max-w-lg">
-                   <div class="w-8 h-8 rounded-full bg-amber-600/10 dark:bg-amber-600/20 flex-shrink-0 flex items-center justify-center">
-                     <span class="text-amber-600 dark:text-amber-500 text-xs font-bold">AI</span>
-                   </div>
-                   <div class="space-y-2 w-full">
-                      <!-- Video Processing State -->
-                      <div class="bg-transparent border border-gray-200 dark:border-slate-800 rounded-xl p-3 w-full">
-                         <!-- Shared Container for Video/Placeholder with consistent size -->
-                         <div [ngStyle]="getContainerStyles(video.video_config?.aspect_ratio)" class="relative rounded-lg overflow-hidden bg-black mb-2 transition-all duration-300">
-                           
-                           @if (video.status === 'completed') {
-                              <!-- Video Player -->
-                              @if (video.video_url) {
-                                <video 
-                                  controls 
-                                  class="w-full h-full object-contain"
-                                  preload="metadata">
-                                  <source [src]="getVideoUrl(video.video_url)" type="video/mp4">
-                                  Your browser does not support the video tag.
-                                </video>
-                              } @else {
-                                <!-- Loading state for completed but not yet loaded video -->
-                                <div class="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 flex flex-col items-center justify-center">
-                                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mb-3"></div>
-                                  <span class="text-gray-400 dark:text-slate-400 text-sm">Loading video...</span>
-                                </div>
-                              }
-                           } @else if (video.status === 'failed') {
-                              <div class="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-red-500 dark:text-red-400 p-4 text-center">
-                                 <svg class="w-8 h-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                 <span class="font-medium">Generation failed</span>
-                              </div>
-                           } @else {
-                              <!-- Blurred Placeholder with Progress -->
-                              <div class="w-full h-full relative">
-                                 <!-- Blurred gradient placeholder -->
-                                 <div 
-                                   class="absolute inset-0 w-full h-full bg-gradient-to-br from-amber-500/30 via-purple-500/20 to-slate-800 transition-all duration-500"
-                                   [style.filter]="'blur(' + getBlurAmount(video._id) + 'px) brightness(0.7)'"
-                                   [style.transform]="'scale(' + (1.1 - getProgress(video._id) * 0.001) + ')'"
-                                 ></div>
-                                 
-                                 <!-- Overlay with progress info -->
-                                 <div class="absolute inset-0 bg-black/30 flex flex-col items-center justify-center">
-                                    <!-- Circular Progress Ring -->
-                                    <div class="relative w-20 h-20">
-                                       <svg class="w-20 h-20 transform -rotate-90" viewBox="0 0 100 100">
-                                         <!-- Background circle -->
-                                         <circle cx="50" cy="50" r="42" stroke-width="6" stroke="rgba(255,255,255,0.15)" fill="none"/>
-                                         <!-- Progress circle -->
-                                         <circle 
-                                           cx="50" cy="50" r="42" stroke-width="6" 
-                                           stroke="#f59e0b" fill="none"
-                                           stroke-linecap="round"
-                                           [attr.stroke-dasharray]="264"
-                                           [attr.stroke-dashoffset]="264 - (264 * getProgress(video._id) / 100)"
-                                           class="transition-all duration-300"
-                                         />
-                                       </svg>
-                                       <span class="absolute inset-0 flex items-center justify-center text-white text-lg font-bold drop-shadow-lg">
-                                         {{ getProgress(video._id) | number:'1.0-0' }}%
-                                       </span>
-                                    </div>
-                                    
-                                    <!-- Current step text -->
-                                    <p class="mt-3 text-white/90 text-sm font-medium text-center px-4 drop-shadow-lg">
-                                      {{ getStepText(video._id) }}
-                                    </p>
-                                    
-                                    <!-- Pulsing dots -->
-                                    <div class="mt-2 flex gap-1.5">
-                                      <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
-                                      <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse" style="animation-delay: 0.15s"></span>
-                                      <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse" style="animation-delay: 0.3s"></span>
-                                    </div>
-                                 </div>
-                                 
-                                 <!-- Status badge -->
-                                 <div class="absolute top-3 left-3 px-2 py-1 bg-amber-500/90 text-white text-xs font-medium rounded-full flex items-center gap-1.5 shadow-lg">
-                                    <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
-                                    {{ video.status === 'pending' ? 'Queued' : 'Generating' }}
-                                 </div>
-                              </div>
-                           }
-                         </div>
-
-                         <!-- Actions Bar (Download / Completed Status) -->
-                         @if (video.status === 'completed') {
-                            <div class="flex items-center justify-between px-1">
-                               <span class="text-green-600 dark:text-green-400 text-xs font-medium flex items-center gap-1">
-                                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                  Completed
-                               </span>
-                               @if (video.video_url) {
-                                 <a [href]="getVideoUrl(video.video_url)" target="_blank" class="text-xs text-amber-600 hover:text-amber-500 dark:text-amber-400 dark:hover:text-white transition-colors">Download MP4</a>
-                               }
-                            </div>
-                         }
-
-
-                         <!-- Script Preview -->
-                         @if (video.current_step) {
-                           <div class="mt-3 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg text-sm text-gray-600 dark:text-slate-400 italic border-l-2 border-gray-300 dark:border-slate-700">
-                             "{{ video.current_step }}"
-                           </div>
-                         }
-                      </div>
-                   </div>
-                </div>
-             </div>
-           }
-        </div>
-
-        <!-- Input Area -->
-        <div class="p-4 bg-white dark:bg-slate-950 border-t border-gray-200 dark:border-slate-800 transition-colors">
-           <form [formGroup]="chatForm" (ngSubmit)="sendMessage()" class="max-w-4xl mx-auto relative">
-              <div class="absolute left-3 bottom-3 flex gap-2">
-                 <select formControlName="category" class="bg-gray-100 dark:bg-slate-900 border-none text-xs text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded py-1 px-2 focus:ring-0 cursor-pointer transition-colors max-w-[120px]">
-                     <option value="explainer_shorts">Explainer</option>
-                     <option value="frequency_generator">Frequency</option>
-                     <option value="subliminal">Subliminal</option>
-                 </select>
-
-                 @if (chatForm.get('category')?.value === 'explainer_shorts') {
-                  <select formControlName="style" class="bg-gray-100 dark:bg-slate-900 border-none text-xs text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded py-1 px-2 focus:ring-0 cursor-pointer transition-colors">
-                      <option value="family_guy">Family Guy</option>
-                      <option value="rick_morty">Rick & Morty</option>
-                      <option value="south_park">South Park</option>
-                      <option value="documentary">Documentary</option>
-                      <option value="pixel_art">Pixel Art</option>
-                   </select>
-                 }
-
-                 @if (chatForm.get('category')?.value === 'subliminal') {
-                    <select formControlName="duration" class="bg-gray-100 dark:bg-slate-900 border-none text-xs text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded py-1 px-2 focus:ring-0 cursor-pointer transition-colors">
-                      <option value="short">Short</option>
-                      <option value="long">Long</option>
-                    </select>
-                 }
-
-                  <select formControlName="aspectRatio" class="bg-gray-100 dark:bg-slate-900 border-none text-xs text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white rounded py-1 px-2 focus:ring-0 cursor-pointer transition-colors">
-                    <option value="16:9">16:9</option>
-                    <option value="9:16">9:16</option>
-                    <option value="1:1">1:1</option>
-                 </select>
-              </div>
+        <!-- Studio Console (Clean, Docked Inspector) -->
+        <div class="p-3 sm:p-4 bg-[#1E1F20] border-t border-[#2E3135]">
+          <form [formGroup]="chatForm" (ngSubmit)="sendMessage()" class="max-w-4xl mx-auto space-y-2.5">
+            
+            <!-- Controls Bar: Category, Persona / DSP Tag, Aspect Ratio -->
+            <div class="flex flex-wrap items-center gap-2">
               
+              <!-- Category Selector -->
+              <label for="consoleCategory" class="sr-only">Video Format</label>
+              <select id="consoleCategory" formControlName="category" 
+                      class="app-input px-2.5 py-1 text-xs text-[#BDC1C6] bg-[#18191B] border border-[#3C4043] rounded-md cursor-pointer">
+                <option value="frequency_generator">Acoustic Frequencies (DSP)</option>
+                <option value="explainer_shorts">Explainer Video Shorts</option>
+              </select>
+
+              <!-- Persona / Style Selector -->
+              @if (chatForm.get('category')?.value === 'explainer_shorts') {
+                <label for="consoleStyle" class="sr-only">Voice Persona</label>
+                <select id="consoleStyle" formControlName="style" 
+                        class="app-input px-2.5 py-1 text-xs text-[#BDC1C6] bg-[#18191B] border border-[#3C4043] rounded-md cursor-pointer">
+                  <option value="family_guy">Cast: Family Guy (Peter, Brian, Stewie)</option>
+                  <option value="rick_morty">Cast: Rick & Morty</option>
+                  <option value="south_park">Cast: South Park</option>
+                  <option value="documentary">Cast: Cinematic Documentary</option>
+                  <option value="pixel_art">Cast: Pixel Art Narrator</option>
+                </select>
+              } @else {
+                <div class="px-2.5 py-1 rounded-full text-[11px] font-mono text-[#BDC1C6] bg-[#131314] border border-[#2E3135]">
+                  Lissajous Vectorscope + Waveform
+                </div>
+              }
+
+              <!-- Aspect Ratio Selector -->
+              <label for="consoleAspectRatio" class="sr-only">Aspect Ratio</label>
+              <select id="consoleAspectRatio" formControlName="aspectRatio" 
+                      class="app-input px-2.5 py-1 text-xs text-[#BDC1C6] bg-[#18191B] border border-[#3C4043] rounded-md cursor-pointer">
+                <option value="9:16">9:16 Vertical (Shorts/Reels)</option>
+                <option value="16:9">16:9 Landscape (YouTube)</option>
+                <option value="1:1">1:1 Square (Feed)</option>
+              </select>
+
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono text-[#80868B] bg-[#131314] border border-[#2E3135] hidden sm:inline-block">
+                1080p Master
+              </span>
+            </div>
+
+            <!-- Input Box & Action Button -->
+            <div class="relative">
+              <label for="consolePrompt" class="sr-only">Prompt Input</label>
               <textarea 
-                 formControlName="prompt"
-                 (keydown.enter)="$event.preventDefault(); sendMessage()"
-                 placeholder="Message VidGen AI..." 
-                 class="w-full bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white rounded-xl border border-gray-300 dark:border-slate-800 pl-4 pr-12 pt-3 pb-10 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 resize-none shadow-lg dark:shadow-none transition-colors"
-                 rows="1"
-                 style="min-height: 54px;"
+                id="consolePrompt"
+                formControlName="prompt"
+                (keydown.enter)="$event.preventDefault(); sendMessage()"
+                [placeholder]="getPlaceholderText()" 
+                class="app-input w-full pl-3 pr-12 py-2.5 text-xs sm:text-sm resize-none h-14 leading-relaxed bg-[#18191B] border border-[#3C4043] rounded-md text-[#F1F3F4] focus:border-[#D97757] focus:ring-1 focus:ring-[#D97757]"
               ></textarea>
               
-              <button type="submit" [disabled]="chatForm.invalid || isProcessing()" class="absolute right-2 bottom-3 p-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-500 disabled:opacity-50 transition-colors">
-                 @if (isProcessing()) {
-                    <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                 } @else {
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
-                 }
+              <button type="submit" 
+                      [disabled]="chatForm.invalid || isProcessing()" 
+                      aria-label="Generate"
+                      class="btn-primary absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[#D97757]">
+                @if (isProcessing()) {
+                  <svg class="animate-spin h-3.5 w-3.5 text-[#FAF8F5]" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                } @else {
+                  <svg class="w-3.5 h-3.5 text-[#FAF8F5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                  </svg>
+                }
               </button>
-           </form>
-           <p class="text-center text-xs text-gray-500 dark:text-slate-600 mt-2">VidGen AI can make mistakes. Consider checking important information.</p>
+            </div>
+
+            <div class="flex items-center justify-between text-[10px] text-[#80868B] font-mono">
+              <span>Press Enter to generate</span>
+              <span>SSE Real-Time Stream</span>
+            </div>
+
+          </form>
         </div>
+
       </main>
     </div>
   `
@@ -310,9 +312,9 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, AfterViewCheck
   public api: ApiService = inject(ApiService);
   public router: Router = inject(Router);
   public themeService: ThemeService = inject(ThemeService);
+  public sseService: SseService = inject(SseService);
   private route: ActivatedRoute = inject(ActivatedRoute);
   private fb: FormBuilder = inject(FormBuilder);
-  private wsService: WebSocketService = inject(WebSocketService);
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
 
@@ -327,18 +329,29 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, AfterViewCheck
   
   // UI state
   sidebarOpen = signal(false);
+  manifestOpenMap = signal<Record<string, boolean>>({});
   
   private pollInterval: any;
   private shouldScroll = false;
-  private wsSubscription: Subscription | null = null;
+  private sseSubscription: Subscription | null = null;
 
   chatForm = this.fb.group({
     prompt: ['', Validators.required],
-    category: ['explainer_shorts'],
+    category: ['frequency_generator'],
     style: ['family_guy'],
     aspectRatio: ['9:16'],
     duration: ['short']
   });
+
+  isFrequency(): boolean {
+    return this.chatForm.get('category')?.value === 'frequency_generator';
+  }
+
+  getPlaceholderText(): string {
+    return this.isFrequency()
+      ? "Enter frequency & beat (e.g. '432 Hz carrier with 10 Hz Alpha beat for deep coding flow')..."
+      : "Enter topic (e.g. 'How Einstein debated quantum entanglement')...";
+  }
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
@@ -351,20 +364,23 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, AfterViewCheck
 
   ngOnDestroy() {
     if (this.pollInterval) clearInterval(this.pollInterval);
-    if (this.wsSubscription) this.wsSubscription.unsubscribe();
-    this.wsService.disconnect();
+    if (this.sseSubscription) {
+      this.sseSubscription.unsubscribe();
+      this.sseSubscription = null;
+    }
+    this.sseService.disconnect();
   }
 
   ngAfterViewChecked() {
     if (this.shouldScroll) {
-        this.scrollToBottom();
-        this.shouldScroll = false;
+      this.scrollToBottom();
+      this.shouldScroll = false;
     }
   }
 
   scrollToBottom(): void {
     try {
-        this.scrollContainer.nativeElement.scrollTop = this.scrollContainer.nativeElement.scrollHeight;
+      this.scrollContainer.nativeElement.scrollTop = this.scrollContainer.nativeElement.scrollHeight;
     } catch(err) { }
   }
 
@@ -377,6 +393,12 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, AfterViewCheck
       await this.refreshHistory();
       this.startPolling(id);
       this.shouldScroll = true;
+
+      // Auto-connect SSE if there is an in-flight video
+      const inFlightVideo = this.videos().find(v => v.status === 'processing' || v.status === 'pending');
+      if (inFlightVideo) {
+        this.subscribeToSse(inFlightVideo._id);
+      }
     } catch (err) {
       console.error(err);
       this.router.navigate(['/dashboard']);
@@ -387,7 +409,6 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, AfterViewCheck
     if (!this.project()) return;
     try {
       const v = await this.api.getProjectHistory(this.project()!._id);
-      // Sort by created_at descending (newest first)
       v.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       if (v.length > this.videos().length) this.shouldScroll = true;
       this.videos.set(v);
@@ -397,14 +418,64 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   startPolling(id: string) {
-    // Poll less frequently when WebSocket is active, more when not
-    // This is a fallback mechanism
     this.pollInterval = setInterval(() => {
-      // Only poll if WebSocket is not connected or if we need to check for updates
-      if (!this.wsService.isConnected() || this.activeVideoId() === null) {
+      if (!this.sseService.isConnected() || this.activeVideoId() === null) {
         this.refreshHistory();
       }
-    }, 5000); // Poll every 5 seconds as fallback
+    }, 5000);
+  }
+
+  subscribeToSse(videoId: string) {
+    this.activeVideoId.set(videoId);
+    this.currentProgress.set(0);
+    this.currentStep.set('Initializing pipeline...');
+
+    if (this.sseSubscription) {
+      this.sseSubscription.unsubscribe();
+    }
+
+    this.sseSubscription = this.sseService.connect(videoId).subscribe({
+      next: (event: VideoProgressEvent) => {
+        if (event.progress !== undefined) {
+          this.currentProgress.set(event.progress);
+        }
+        if (event.current_step) {
+          this.currentStep.set(event.current_step);
+        }
+
+        const currentVideos = this.videos();
+        const index = currentVideos.findIndex(v => v._id === videoId);
+        if (index >= 0) {
+          const updated = [...currentVideos];
+          updated[index] = {
+            ...updated[index],
+            status: event.status ?? updated[index].status,
+            progress: event.progress ?? updated[index].progress,
+            current_step: event.current_step ?? updated[index].current_step,
+            video_url: event.video_url ?? updated[index].video_url,
+            error_message: event.error_message ?? updated[index].error_message
+          };
+          this.videos.set(updated);
+        }
+
+        if (event.status === 'completed' || event.type === 'complete') {
+          this.activeVideoId.set(null);
+          this.isProcessing.set(false);
+          this.currentProgress.set(100);
+          setTimeout(() => this.refreshHistory(), 600);
+          this.shouldScroll = true;
+        } else if (event.status === 'failed' || event.type === 'error') {
+          this.activeVideoId.set(null);
+          this.isProcessing.set(false);
+          setTimeout(() => this.refreshHistory(), 600);
+        }
+      },
+      error: (err) => {
+        console.error('SSE streaming error:', err);
+        this.activeVideoId.set(null);
+        this.isProcessing.set(false);
+      }
+    });
   }
 
   async sendMessage() {
@@ -413,14 +484,11 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, AfterViewCheck
     this.isProcessing.set(true);
     const { prompt, category, style, aspectRatio, duration } = this.chatForm.value;
 
-    // Map category to generator_id
     let generatorId = 'family_guy';
     if (category === 'explainer_shorts') {
       generatorId = style || 'family_guy';
     } else if (category === 'frequency_generator') {
       generatorId = 'frequency';
-    } else if (category === 'subliminal') {
-      generatorId = 'subliminal';
     }
 
     try {
@@ -436,79 +504,23 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, AfterViewCheck
       
       this.chatForm.patchValue({ prompt: '' });
       
-      // Add video to list immediately
       const currentVideos = this.videos();
       this.videos.set([video, ...currentVideos]);
       this.shouldScroll = true;
       
-      // Refresh history to ensure we have the latest
       await this.refreshHistory();
       
-      // Subscribe to WebSocket for real-time progress
       if (video && video._id) {
-        this.activeVideoId.set(video._id);
-        this.currentProgress.set(0);
-        this.currentStep.set('Starting...');
-        
-        // Cleanup existing subscription
-        if (this.wsSubscription) {
-          this.wsSubscription.unsubscribe();
-        }
-        
-        this.wsSubscription = this.wsService.connect(video._id).subscribe({
-          next: (progress: VideoProgress) => {
-            if (progress.type === 'progress' && progress.status) {
-              // Update progress signals
-              if (progress.progress !== undefined) {
-                this.currentProgress.set(progress.progress);
-              }
-              if (progress.current_step) {
-                this.currentStep.set(progress.current_step);
-              }
-              
-              // Update video in the list if it exists
-              const currentVideos = this.videos();
-              const videoIndex = currentVideos.findIndex(v => v._id === video._id);
-              if (videoIndex >= 0) {
-                const updatedVideos = [...currentVideos];
-                updatedVideos[videoIndex] = {
-                  ...updatedVideos[videoIndex],
-                  status: progress.status,
-                  progress: progress.progress ?? updatedVideos[videoIndex].progress,
-                  current_step: progress.current_step ?? updatedVideos[videoIndex].current_step,
-                  video_url: progress.video_url ?? updatedVideos[videoIndex].video_url,
-                  error_message: progress.error_message ?? updatedVideos[videoIndex].error_message
-                };
-                this.videos.set(updatedVideos);
-              }
-              
-              // Handle completion or failure
-              if (progress.status === 'completed' || progress.status === 'failed') {
-                this.activeVideoId.set(null);
-                this.isProcessing.set(false);
-                // Refresh history to get final state
-                setTimeout(() => this.refreshHistory(), 500);
-                this.shouldScroll = true;
-              }
-            }
-          },
-          error: (err) => {
-            console.error('WebSocket error:', err);
-            this.activeVideoId.set(null);
-            this.isProcessing.set(false);
-            // Fallback to polling if WebSocket fails
-            console.log('Falling back to polling for video updates');
-          }
-        });
+        this.subscribeToSse(video._id);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Failed to generate video:', err);
       this.isProcessing.set(false);
     }
   }
 
   async deleteProject() {
-    if (!this.project() || !confirm('Are you sure you want to delete this chat?')) return;
+    if (!this.project() || !confirm('Are you sure you want to delete this project?')) return;
     try {
       await this.api.deleteProject(this.project()!._id);
       this.router.navigate(['/dashboard']);
@@ -517,71 +529,64 @@ export class ProjectDetailComponent implements OnInit, OnDestroy, AfterViewCheck
     }
   }
 
-  /**
-   * Get current progress for a video (from WebSocket updates or stored progress)
-   */
   getProgress(videoId: string): number {
-    // If this is the active video being updated via WebSocket, use signed progress
     if (this.activeVideoId() === videoId) {
       return this.currentProgress();
     }
-    // Otherwise, get from video record
     const video = this.videos().find(v => v._id === videoId);
     return video?.progress || 0;
   }
 
-  /**
-   * Calculate blur amount based on progress (20px at 0% → 0px at 100%)
-   */
-  getBlurAmount(videoId: string): number {
-    const progress = this.getProgress(videoId);
-    // Max blur of 20px, decreasing linearly with progress
-    return Math.max(0, 20 - (progress * 0.2));
-  }
-
-  /**
-   * Get the current step text for a video
-   */
   getStepText(videoId: string): string {
-    // If this is the active video, use the signal value
     if (this.activeVideoId() === videoId) {
-      return this.currentStep() || 'Initializing...';
+      return this.currentStep() || 'Synthesizing creative assets...';
     }
-    // Otherwise, get from video record
     const video = this.videos().find(v => v._id === videoId);
     return video?.current_step || 'Processing...';
   }
 
-  /**
-   * Get container styles for video aspect ratio
-   * Returns precise width and height to prevent layout shifts
-   */
   getContainerStyles(aspectRatio: string | undefined | null): { width: string, height: string, 'aspect-ratio': string } {
     switch (aspectRatio) {
       case '9:16':
-        // Portrait video - Fixed height 400px, calculated width
-        return { width: '225px', height: '400px', 'aspect-ratio': '9/16' };
+        return { width: '260px', height: '460px', 'aspect-ratio': '9/16' };
       case '1:1':
-        // Square video - Fixed size 350px
-        return { width: '350px', height: '350px', 'aspect-ratio': '1/1' };
+        return { width: '360px', height: '360px', 'aspect-ratio': '1/1' };
       case '16:9':
       default:
-        // Landscape video - Fixed width 400px, calculated height
-        return { width: '400px', height: '225px', 'aspect-ratio': '16/9' };
+        return { width: '460px', height: '260px', 'aspect-ratio': '16/9' };
     }
   }
 
   getVideoUrl(videoUrl: string | null | undefined): string {
     if (!videoUrl) return '';
-    // If already a full URL, return as is
     if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) {
       return videoUrl;
     }
-    // Otherwise, prepend the backend URL
-    // Ensure we have a leading slash
     const path = videoUrl.startsWith('/') ? videoUrl : `/${videoUrl}`;
     return `http://localhost:8000${path}`;
   }
+
+  formatGeneratorName(generatorId: string | undefined): string {
+    if (!generatorId) return 'Explainer Shorts';
+    switch (generatorId) {
+      case 'family_guy': return 'Family Guy Cast';
+      case 'rick_morty': return 'Rick & Morty Cast';
+      case 'south_park': return 'South Park Cast';
+      case 'documentary': return 'Cinematic Documentary';
+      case 'frequency': return 'Acoustic Frequency & Binaural Beats';
+      default: return generatorId.replace('_', ' ');
+    }
+  }
+
+  toggleManifest(videoId: string) {
+    const current = this.manifestOpenMap();
+    this.manifestOpenMap.set({
+      ...current,
+      [videoId]: !current[videoId]
+    });
+  }
+
+  isManifestOpen(videoId: string): boolean {
+    return !!this.manifestOpenMap()[videoId];
+  }
 }
-
-

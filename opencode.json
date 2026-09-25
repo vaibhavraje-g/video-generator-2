@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "providers": {
+    "meta": {
+      "name": "Meta Model API",
+      "package": "@ai-sdk/openai-compatible",
+      "settings": {
+        "baseURL": "https://api.meta.ai/v1",
+        "apiKey": "{env:META_API_KEY}"
+      },
+      "models": {
+        "muse-spark": {
+          "name": "Meta Muse Spark"
+        },
+        "muse-spark-1.3": {
+          "name": "Meta Muse Spark 1.3"
+        }
+      }
+    }
+  },
+  "model": "opencode/muse-spark-1.3-contributor-free"
+}

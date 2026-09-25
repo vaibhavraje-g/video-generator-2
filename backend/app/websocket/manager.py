@@ -1,17 +1,20 @@
 # backend/app/websocket/manager.py
-"""WebSocket connection manager for real-time video progress updates"""
+"""Connection manager supporting both WebSockets and Server-Sent Events (SSE)."""
 
-from typing import Dict
-from fastapi import WebSocket
+import asyncio
 import json
+from typing import Dict, List, Optional
+from fastapi import WebSocket
 
 
 class ConnectionManager:
-    """Manage WebSocket connections for video progress updates"""
+    """Manage WebSockets and Server-Sent Events (SSE) subscriptions for real-time video progress."""
     
     def __init__(self):
-        # Map video_id to list of connected websockets
-        self.active_connections: Dict[str, list[WebSocket]] = {}
+        # Map video_id to list of active WebSocket connections
+        self.active_connections: Dict[str, List[WebSocket]] = {}
+        # Map video_id to list of active SSE subscriber asyncio.Queues
+        self.sse_subscribers: Dict[str, List[asyncio.Queue]] = {}
     
     async def connect(self, video_id: str, websocket: WebSocket):
         """Accept a new WebSocket connection for a video"""
@@ -27,22 +30,45 @@ class ConnectionManager:
                 self.active_connections[video_id].remove(websocket)
             if not self.active_connections[video_id]:
                 del self.active_connections[video_id]
+                
+    def subscribe_sse(self, video_id: str) -> asyncio.Queue:
+        """Subscribe to Server-Sent Events for a video_id, returning an event queue."""
+        q: asyncio.Queue = asyncio.Queue()
+        if video_id not in self.sse_subscribers:
+            self.sse_subscribers[video_id] = []
+        self.sse_subscribers[video_id].append(q)
+        return q
+
+    def unsubscribe_sse(self, video_id: str, q: asyncio.Queue):
+        """Unsubscribe and clean up an SSE event queue."""
+        if video_id in self.sse_subscribers:
+            if q in self.sse_subscribers[video_id]:
+                self.sse_subscribers[video_id].remove(q)
+            if not self.sse_subscribers[video_id]:
+                del self.sse_subscribers[video_id]
     
     async def broadcast(self, video_id: str, data: dict):
-        """Broadcast progress update to all connections watching a video"""
+        """Broadcast progress update to all WebSocket and SSE connections watching a video."""
+        message = json.dumps(data)
+        
+        # 1. Deliver to WebSockets
         if video_id in self.active_connections:
-            message = json.dumps(data)
             dead_connections = []
-            
             for websocket in self.active_connections[video_id]:
                 try:
                     await websocket.send_text(message)
                 except Exception:
                     dead_connections.append(websocket)
-            
-            # Clean up dead connections
             for ws in dead_connections:
                 self.disconnect(video_id, ws)
+
+        # 2. Deliver to SSE subscriber queues
+        if video_id in self.sse_subscribers:
+            for q in self.sse_subscribers[video_id]:
+                try:
+                    await q.put(data)
+                except Exception:
+                    pass
     
     async def send_progress(
         self, 
@@ -50,10 +76,10 @@ class ConnectionManager:
         status: str, 
         progress: float, 
         current_step: str,
-        video_url: str | None = None,
-        error_message: str | None = None
+        video_url: Optional[str] = None,
+        error_message: Optional[str] = None
     ):
-        """Send a progress update message"""
+        """Send a progress update message across all real-time channels."""
         await self.broadcast(video_id, {
             "type": "progress",
             "video_id": video_id,
@@ -63,3 +89,6 @@ class ConnectionManager:
             "video_url": video_url,
             "error_message": error_message
         })
+
+
+connection_manager = ConnectionManager()

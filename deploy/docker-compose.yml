@@ -1,0 +1,55 @@
+# deploy/docker-compose.yml
+version: '3.8'
+
+services:
+  # 1. Voice Cloning Microservice (F5-TTS / Neural Voice Engine)
+  voice-cloner:
+    build:
+      context: ../services/voice_cloner
+      dockerfile: Dockerfile
+    image: vidgen-voice-cloner:latest
+    container_name: vidgen-voice-cloner
+    ports:
+      - "8004:8004"
+    volumes:
+      - ../services/voice_cloner/voices:/app/voices
+    environment:
+      - PORT=8004
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  # 2. Local MongoDB (or connect to MongoDB Atlas M0 Free Tier)
+  mongodb:
+    image: mongo:6.0
+    container_name: vidgen-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+
+  # 3. Video Generator Backend API (FastAPI)
+  backend-api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.worker
+    image: vidgen-backend:latest
+    container_name: vidgen-api
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_DB_NAME=video_generator
+      - API_PORT=8000
+      - CHATTERBOX_BASE_URL=http://voice-cloner:8004
+    depends_on:
+      - mongodb
+      - voice-cloner
+    volumes:
+      - ../backend/assets:/app/backend/assets
+      - ../backend/static:/app/backend/static
+
+volumes:
+  mongo-data:

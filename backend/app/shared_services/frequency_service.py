@@ -19,43 +19,43 @@ class FrequencyPreset:
     color: str  # Associated color for visuals
 
 
-# Solfeggio frequencies and their properties
+# Solfeggio frequencies and their grounded psychoacoustic properties
 SOLFEGGIO_PRESETS = {
     432: FrequencyPreset(
         frequency=432,
-        name="Relaxing",
-        description="Natural frequency for deep relaxation and harmony with nature",
-        color="#4CAF50"  # Green
+        name="Natural Harmonic",
+        description="Acoustic tuning for natural harmonic resonance and cognitive calm",
+        color="#6366F1"  # Electric Indigo
     ),
     528: FrequencyPreset(
         frequency=528,
-        name="Healing",
-        description="DNA repair, transformation, and miracles",
-        color="#2196F3"  # Blue
+        name="Clarity & Renewal",
+        description="Harmonic resonance promoting mental clarity, presence, and focus",
+        color="#06B6D4"  # Cyan
     ),
     639: FrequencyPreset(
         frequency=639,
-        name="Love",
-        description="Harmonious relationships and connections",
-        color="#E91E63"  # Pink
+        name="Harmonic Connection",
+        description="Harmonic interval fostering interpersonal attunement and empathy",
+        color="#8B5CF6"  # Violet
     ),
     741: FrequencyPreset(
         frequency=741,
-        name="Cleansing",
-        description="Purification, solutions, and self-expression",
-        color="#9C27B0"  # Purple (internal use, not UI)
+        name="Creative Expression",
+        description="Acoustic clarity supporting creative problem-solving and focus",
+        color="#EC4899"  # Pink / Magenta
     ),
     852: FrequencyPreset(
         frequency=852,
-        name="Intuition",
-        description="Spiritual awakening and inner wisdom",
-        color="#3F51B5"  # Indigo
+        name="Deep Intuition",
+        description="Mindful introspective awareness and meditative presence",
+        color="#3B82F6"  # Blue
     ),
     963: FrequencyPreset(
         frequency=963,
-        name="Divine",
-        description="Connection to higher consciousness and source",
-        color="#FFC107"  # Gold
+        name="Pure Awareness",
+        description="Peak harmonic resonance for expanded conscious focus and serenity",
+        color="#F59E0B"  # Amber
     )
 }
 

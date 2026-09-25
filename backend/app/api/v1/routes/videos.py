@@ -3,7 +3,7 @@
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import APIRouter, HTTPException, status, Depends, BackgroundTasks, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, status, Depends, BackgroundTasks, WebSocket, WebSocketDisconnect, Request
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, Literal
 
@@ -162,35 +162,68 @@ async def get_video(
 async def websocket_video_progress(websocket: WebSocket, video_id: str):
     """
     WebSocket endpoint for real-time video generation progress
-    
-    Connect to receive progress updates:
-    ws://localhost:8001/api/v1/videos/{video_id}/ws
-    
-    Note: Authentication is optional for WebSocket connections to allow
-    real-time updates without requiring token refresh.
     """
     await connection_manager.connect(video_id, websocket)
     try:
-        # Send initial connection confirmation
         await websocket.send_json({
             "type": "connected",
             "video_id": video_id,
             "message": "Connected to video progress stream"
         })
-        
-        # Keep connection alive and wait for client disconnect
         while True:
-            # Wait for any message (like a ping) from client
             try:
                 data = await websocket.receive_text()
-                # Echo ping messages to keep connection alive
                 if data == "ping":
                     await websocket.send_json({"type": "pong"})
             except WebSocketDisconnect:
                 break
     except WebSocketDisconnect:
-        pass  # Normal disconnect
+        pass
     except Exception as e:
         print(f"WebSocket error for video {video_id}: {e}")
     finally:
         connection_manager.disconnect(video_id, websocket)
+
+
+@router.get("/{video_id}/stream")
+async def stream_video_progress(request: Request, video_id: str):
+    """
+    Server-Sent Events (SSE) streaming endpoint for video generation progress.
+    Firewall-friendly, auto-reconnecting HTTP event stream.
+    """
+    import json
+    from fastapi.responses import StreamingResponse
+
+    q = connection_manager.subscribe_sse(video_id)
+
+    async def sse_event_generator():
+        try:
+            # Send initial confirmation event
+            yield f"event: connected\ndata: {json.dumps({'status': 'connected', 'video_id': video_id})}\n\n"
+
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    # Await new progress message with a 15-second heartbeat
+                    data = await asyncio.wait_for(q.get(), timeout=15.0)
+                    status_val = data.get("status", "processing")
+                    event_type = "complete" if status_val == "completed" else ("error" if status_val == "failed" else "progress")
+                    yield f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+                    if status_val in ("completed", "failed"):
+                        break
+                except asyncio.TimeoutError:
+                    # Heartbeat comment to keep HTTP connection alive
+                    yield ": keep-alive\n\n"
+        finally:
+            connection_manager.unsubscribe_sse(video_id, q)
+
+    return StreamingResponse(
+        sse_event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

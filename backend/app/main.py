@@ -65,8 +65,8 @@ async def lifespan(app: FastAPI):
     Handles startup and shutdown events
     """
     # Startup
-    logger.info("🚀 Starting application...")
-    print("🚀 Starting application...")
+    logger.info("Starting application...")
+    print("[INFO] Starting application...")
     
     # Connect to MongoDB
     await MongoDB.connect_db()
@@ -74,17 +74,17 @@ async def lifespan(app: FastAPI):
     # Ensure directories exist
     settings.ensure_directories()
     
-    logger.info("✅ Application started successfully")
-    print("✅ Application started successfully")
+    logger.info("Application started successfully")
+    print("[INFO] Application started successfully")
     
     yield
     
     # Shutdown
-    logger.info("🛑 Shutting down application...")
-    print("🛑 Shutting down application...")
+    logger.info("Shutting down application...")
+    print("[INFO] Shutting down application...")
     await MongoDB.close_db()
-    logger.info("👋 Application shutdown complete")
-    print("👋 Application shutdown complete")
+    logger.info("Application shutdown complete")
+    print("[INFO] Application shutdown complete")
 
 
 # Create FastAPI app
@@ -95,16 +95,21 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+from app.middleware.security import SecurityHeadersMiddleware
+
 # Setup global exception handlers
 setup_exception_handlers(app)
 
-# Configure CORS
+# Mount security headers middleware (OWASP Top 10 defense)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Configure CORS with explicit origins or allow regex for preview deployments
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS if settings.ENVIRONMENT == "production" else ["*"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
 
 # Include API router

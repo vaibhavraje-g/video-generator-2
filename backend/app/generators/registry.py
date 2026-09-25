@@ -46,7 +46,7 @@ class GeneratorRegistry:
             raise ValueError(f"Generator '{generator_id}' is already registered")
         
         cls._generators[generator_id] = generator_class
-        print(f"✅ Registered generator: {generator_id}")
+        print(f"[OK] Registered generator: {generator_id}")
         return generator_class
     
     @classmethod

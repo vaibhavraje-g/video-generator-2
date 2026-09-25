@@ -1,168 +1,223 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink, Router } from '@angular/router';
 import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
-import { ApiService, Project } from '../services/api.service';
+import { ApiService } from '../services/api.service';
 import { ThemeService } from '../services/theme.service';
 import { CommonModule } from '@angular/common';
+import { SidebarComponent } from '../components/sidebar/sidebar.component';
+
+interface FrequencyChip {
+  label: string;
+  sub: string;
+  prompt: string;
+}
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, ReactiveFormsModule, CommonModule],
+  imports: [RouterLink, ReactiveFormsModule, CommonModule, SidebarComponent],
   template: `
-    <div class="flex h-screen bg-white dark:bg-slate-950 overflow-hidden transition-colors duration-300">
-      <!-- Sidebar -->
-      <aside class="hidden md:flex w-64 flex-col bg-gray-50 dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 transition-colors duration-300">
-        <div class="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center gap-2">
-          <div class="w-8 h-8 rounded-lg bg-amber-600 flex items-center justify-center text-white font-bold shadow-sm">V</div>
-          <span class="font-bold text-gray-900 dark:text-white">VidGen AI</span>
-        </div>
+    <div class="flex h-screen bg-[#131314] text-[#E3E3E3] overflow-hidden font-sans">
+      
+      <!-- Shared Studio Sidebar -->
+      <app-sidebar 
+        [isOpen]="sidebarOpen()"
+        (sidebarClose)="sidebarOpen.set(false)">
+      </app-sidebar>
+
+      <!-- Main Creation Studio Canvas -->
+      <main class="flex-1 flex flex-col relative h-full overflow-y-auto">
         
-        <div class="p-3">
-          <a routerLink="/dashboard" class="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors border border-gray-200 dark:border-slate-700 shadow-sm">
-            <svg class="w-4 h-4 text-amber-600 dark:text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            New Project
-          </a>
-        </div>
-
-        <div class="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-          <h3 class="px-3 text-xs font-medium text-gray-500 dark:text-slate-500 uppercase tracking-wider mb-2">History</h3>
-          @for (project of api.projects(); track project._id) {
-            <a [routerLink]="['/projects', project._id]" 
-               class="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-800 rounded-lg transition-colors truncate group">
-              <svg class="w-4 h-4 text-gray-400 dark:text-slate-600 group-hover:text-gray-600 dark:group-hover:text-slate-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+        <!-- Mobile Header Bar -->
+        <header class="md:hidden h-14 border-b border-[#2E3135] bg-[#1E1F20] flex items-center justify-between px-4 z-20 sticky top-0">
+          <div class="flex items-center gap-2.5">
+            <button 
+              (click)="sidebarOpen.set(true)"
+              aria-label="Open studio sidebar"
+              class="text-[#80868B] hover:text-[#F1F3F4] p-1 rounded hover:bg-[#282A2D] focus-visible:ring-1 focus-visible:ring-[#D97757]">
+              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
-              <span class="truncate">{{ project.name }}</span>
-            </a>
-          }
-        </div>
+            </button>
+            <span class="font-editorial font-semibold text-xs text-[#F1F3F4]">VidGen Studio</span>
+          </div>
 
-        <div class="p-4 border-t border-gray-200 dark:border-slate-800 space-y-2">
-           <!-- Theme Toggle -->
-           <button (click)="themeService.toggle()" class="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white w-full transition-colors px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800">
-             @if (themeService.isDark()) {
-               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-               </svg>
-               <span>Light Mode</span>
-             } @else {
-               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-               </svg>
-               <span>Dark Mode</span>
-             }
-           </button>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#81C995]"></span>
+            <span class="text-[10px] font-mono text-[#80868B] uppercase">Online</span>
+          </div>
+        </header>
 
-          <button (click)="api.logout(); router.navigate(['/login'])" class="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white w-full transition-colors px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Sign Out
-          </button>
-        </div>
-      </aside>
+        <!-- Studio Center Stage -->
+        <div class="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 max-w-3xl mx-auto w-full">
+          <div class="w-full space-y-6">
+            
+            <!-- Page Header -->
+            <div class="text-left space-y-1.5">
+              <h1 class="text-2xl sm:text-3xl font-editorial font-semibold text-[#F1F3F4] tracking-tight">
+                Studio Workspace
+              </h1>
+              <p class="text-xs text-[#80868B] leading-relaxed max-w-xl">
+                Synthesize acoustic frequency soundscapes with binaural entrainment or compose multi-character explainer video shorts.
+              </p>
+            </div>
 
-      <!-- Main Content (New Chat State) -->
-      <main class="flex-1 flex flex-col relative h-full">
-        <!-- Mobile Header -->
-        <div class="md:hidden flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <span class="font-bold text-gray-900 dark:text-white">VidGen AI</span>
-          <button (click)="themeService.toggle()" class="text-gray-600 dark:text-slate-400">
-            @if (themeService.isDark()) {
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-             } @else {
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
-             }
-          </button>
-        </div>
+            <!-- Google AI Studio Segmented Engine Switcher -->
+            <div class="flex items-center justify-start">
+              <div class="inline-flex p-1 rounded-full bg-[#1E1F20] border border-[#2E3135]" role="tablist" aria-label="Synthesis Engine">
+                <button type="button" 
+                        role="tab"
+                        [attr.aria-selected]="isFrequency()"
+                        (click)="setCategory('frequency_generator')"
+                        [class.bg-[#282A2D]]="isFrequency()"
+                        [class.border]="isFrequency()"
+                        [class.border-[#3C4043]]="isFrequency()"
+                        [class.text-[#FAF8F5]]="isFrequency()"
+                        [class.shadow-sm]="isFrequency()"
+                        [class.text-[#80868B]]="!isFrequency()"
+                        class="px-4 py-1.5 rounded-full text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-[#D97757]">
+                  Acoustic Frequencies (DSP)
+                </button>
 
-        <div class="flex-1 flex flex-col items-center justify-center p-4 overflow-y-auto">
-          <div class="w-full max-w-3xl space-y-8 text-center">
-             <div class="space-y-4">
-                <div class="w-16 h-16 bg-gray-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
-                  <svg class="w-8 h-8 text-amber-600 dark:text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                  </svg>
-                </div>
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">What can I create for you?</h1>
-             </div>
+                <button type="button" 
+                        role="tab"
+                        [attr.aria-selected]="!isFrequency()"
+                        (click)="setCategory('explainer_shorts')"
+                        [class.bg-[#282A2D]]="!isFrequency()"
+                        [class.border]="!isFrequency()"
+                        [class.border-[#3C4043]]="!isFrequency()"
+                        [class.text-[#FAF8F5]]="!isFrequency()"
+                        [class.shadow-sm]="!isFrequency()"
+                        [class.text-[#80868B]]="isFrequency()"
+                        class="px-4 py-1.5 rounded-full text-xs font-medium transition-colors focus-visible:ring-1 focus-visible:ring-[#D97757]">
+                  Explainer Video Shorts
+                </button>
+              </div>
+            </div>
 
-             <div class="bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-xl dark:shadow-none backdrop-blur-sm">
-                <form [formGroup]="chatForm" (ngSubmit)="startChat()" class="space-y-4">
+            <!-- Creation Studio Form -->
+            <div class="p-5 rounded-lg bg-[#1E1F20] border border-[#2E3135] shadow-sm space-y-4">
+              <form [formGroup]="chatForm" (ngSubmit)="startChat()" class="space-y-4">
+                
+                <!-- Quick Frequency Preset Chips (Frequency Mode Only) -->
+                @if (isFrequency()) {
+                  <div class="space-y-1.5">
+                    <label class="text-[11px] font-medium text-[#80868B] uppercase tracking-wider block">
+                      Acoustic Calibration Presets:
+                    </label>
+                    <div class="flex flex-wrap gap-1.5">
+                      @for (chip of frequencyChips; track chip.label) {
+                        <button type="button"
+                                (click)="applyFrequencyChip(chip)"
+                                class="px-2.5 py-1 rounded-full text-xs font-medium bg-[#131314] hover:bg-[#282A2D] border border-[#2E3135] hover:border-[#5F6368] text-[#BDC1C6] hover:text-[#F1F3F4] transition-colors focus-visible:ring-1 focus-visible:ring-[#D97757]">
+                          <span class="font-semibold text-[#F1F3F4]">{{ chip.label }}</span>
+                          <span class="text-[#80868B] text-[10px] ml-1">({{ chip.sub }})</span>
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <!-- Topic / Creative Prompt Field -->
+                <div class="space-y-1">
+                  <label for="promptInput" class="text-xs font-medium text-[#BDC1C6] block">
+                    {{ isFrequency() ? 'Acoustic Prompt or Frequency Description' : 'Video Narrative Topic' }}
+                  </label>
                   <textarea 
+                    id="promptInput"
                     formControlName="prompt"
                     (keydown.enter)="$event.preventDefault(); startChat()"
-                    placeholder="Describe the video you want to generate..." 
-                    class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-xl p-4 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-slate-500 focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-500 focus:border-transparent resize-none h-32 transition-colors"
+                    [placeholder]="getPlaceholderText()" 
+                    class="app-input w-full p-3.5 h-28 text-xs sm:text-sm leading-relaxed resize-none bg-[#18191B] border border-[#3C4043] rounded-md text-[#F1F3F4] focus:border-[#D97757] focus:ring-1 focus:ring-[#D97757]"
                   ></textarea>
+                </div>
 
-                  <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
-                     <div class="flex flex-wrap gap-2 w-full md:w-auto">
-                        <!-- Category Select -->
-                        <select formControlName="category" class="bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-slate-300 focus:ring-amber-500 dark:focus:ring-amber-500">
-                           <option value="explainer_shorts">Explainer Shorts</option>
-                           <option value="frequency_generator">Frequency Generator</option>
-                           <option value="subliminal">Subliminal Videos</option>
-                        </select>
+                <!-- Parameter Controls Bar -->
+                <div class="flex flex-col sm:flex-row gap-3 items-center justify-between pt-3 border-t border-[#2E3135]">
+                  <div class="flex flex-wrap gap-2 w-full sm:w-auto items-center">
+                    
+                    <!-- Voice Cast Selector (Explainer Mode Only) -->
+                    @if (!isFrequency()) {
+                      <label for="styleSelect" class="sr-only">Voice Persona</label>
+                      <select id="styleSelect" formControlName="style" class="app-input px-2.5 py-1.5 text-xs text-[#BDC1C6] bg-[#18191B] border border-[#3C4043] rounded-md cursor-pointer">
+                        <option value="family_guy">Voice: Family Guy Cast (Peter, Brian, Stewie)</option>
+                        <option value="rick_morty">Voice: Rick & Morty</option>
+                        <option value="south_park">Voice: South Park</option>
+                        <option value="documentary">Voice: Cinematic Documentary</option>
+                        <option value="pixel_art">Voice: Pixel Art Narrator</option>
+                      </select>
+                    } @else {
+                      <div class="px-2.5 py-1 rounded-full text-[11px] font-mono text-[#BDC1C6] bg-[#131314] border border-[#2E3135]">
+                        Lissajous Vectorscope + Waveform
+                      </div>
+                    }
 
-                        <!-- Style Select (Only for Explainer Shorts) -->
-                        @if (chatForm.get('category')?.value === 'explainer_shorts') {
-                          <select formControlName="style" class="bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-slate-300 focus:ring-amber-500 dark:focus:ring-amber-500">
-                            <option value="family_guy">Family Guy</option>
-                            <option value="rick_morty">Rick & Morty</option>
-                            <option value="south_park">South Park</option>
-                            <option value="documentary">Documentary</option>
-                            <option value="pixel_art">Pixel Art</option>
-                          </select>
-                        }
+                    <!-- Aspect Ratio Selector -->
+                    <label for="aspectRatioSelect" class="sr-only">Aspect Ratio</label>
+                    <select id="aspectRatioSelect" formControlName="aspectRatio" class="app-input px-2.5 py-1.5 text-xs text-[#BDC1C6] bg-[#18191B] border border-[#3C4043] rounded-md cursor-pointer">
+                      <option value="9:16">9:16 Vertical (Shorts/Reels)</option>
+                      <option value="16:9">16:9 Landscape (YouTube)</option>
+                      <option value="1:1">1:1 Square (Feed)</option>
+                    </select>
 
-                        <!-- Duration Select (Only for Subliminal) -->
-                        @if (chatForm.get('category')?.value === 'subliminal') {
-                          <select formControlName="duration" class="bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-slate-300 focus:ring-amber-500 dark:focus:ring-amber-500">
-                            <option value="short">Short (1 min)</option>
-                            <option value="long">Long (10 mins)</option>
-                          </select>
-                        }
-                        
-                        <select formControlName="aspectRatio" class="bg-gray-50 dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-gray-700 dark:text-slate-300 focus:ring-amber-500 dark:focus:ring-amber-500">
-                          <option value="16:9">16:9 Landscape</option>
-                          <option value="9:16">9:16 Vertical</option>
-                          <option value="1:1">1:1 Square</option>
-                        </select>
-                     </div>
-
-                     <button type="submit" [disabled]="chatForm.invalid || isProcessing()" 
-                       class="w-full md:w-auto bg-amber-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-amber-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm">
-                       @if (isProcessing()) {
-                         <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                       } @else {
-                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                         </svg>
-                       }
-                       Generate
-                     </button>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-mono text-[#80868B] bg-[#131314] border border-[#2E3135] hidden sm:inline-block">
+                      1080p Master
+                    </span>
                   </div>
-                </form>
-             </div>
-             
-             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-gray-500 dark:text-slate-500">
-                <button (click)="quickStart('Explain Quantum Physics')" class="p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-700 transition-all text-left shadow-sm dark:shadow-none">
-                  "Explain Quantum Physics"
+
+                  <!-- Generate Action Button -->
+                  <button type="submit" 
+                          [disabled]="chatForm.invalid || isProcessing()" 
+                          class="btn-primary w-full sm:w-auto px-4 py-2 text-xs flex items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-[#D97757]">
+                    @if (isProcessing()) {
+                      <svg class="animate-spin h-3.5 w-3.5 text-[#FAF8F5]" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Synthesizing...</span>
+                    } @else {
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{{ isFrequency() ? 'Synthesize Frequency Video' : 'Generate Video Short' }}</span>
+                    }
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Featured Configurations (Restrained Product Layout) -->
+            <div class="space-y-2 pt-1">
+              <span class="text-[11px] font-medium text-[#80868B] uppercase tracking-wider block">
+                Featured Configurations
+              </span>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                
+                <button type="button" 
+                        (click)="quickStartFrequency('432 Hz carrier with 10 Hz Alpha binaural beat for deep coding flow state')" 
+                        class="p-3.5 rounded-lg bg-[#1E1F20] border border-[#2E3135] hover:border-[#5F6368] text-left transition-colors focus-visible:ring-1 focus-visible:ring-[#D97757]">
+                  <div class="font-medium text-xs text-[#F1F3F4]">Alpha Flow (432Hz)</div>
+                  <div class="text-[11px] text-[#80868B] mt-0.5 line-clamp-1">432Hz carrier with 10Hz Alpha beat for calm focus</div>
                 </button>
-                <button (click)="quickStart('Healing 528Hz Frequency')" class="p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-700 transition-all text-left shadow-sm dark:shadow-none">
-                  "Healing 528Hz Frequency"
+
+                <button type="button" 
+                        (click)="quickStartFrequency('40 Hz Gamma binaural beat with 528 Hz harmonic carrier for peak cognitive focus')" 
+                        class="p-3.5 rounded-lg bg-[#1E1F20] border border-[#2E3135] hover:border-[#5F6368] text-left transition-colors focus-visible:ring-1 focus-visible:ring-[#D97757]">
+                  <div class="font-medium text-xs text-[#F1F3F4]">Gamma Focus (40Hz)</div>
+                  <div class="text-[11px] text-[#80868B] mt-0.5 line-clamp-1">40Hz Gamma beat with 528Hz carrier for study</div>
                 </button>
-                <button (click)="quickStart('Product launch trailer')" class="p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-700 transition-all text-left shadow-sm dark:shadow-none">
-                  "Product launch trailer"
+
+                <button type="button" 
+                        (click)="quickStartShort('How Black Holes warp space-time and create event horizons')" 
+                        class="p-3.5 rounded-lg bg-[#1E1F20] border border-[#2E3135] hover:border-[#5F6368] text-left transition-colors focus-visible:ring-1 focus-visible:ring-[#D97757]">
+                  <div class="font-medium text-xs text-[#F1F3F4]">Explainer: Astrophysics</div>
+                  <div class="text-[11px] text-[#80868B] mt-0.5 line-clamp-1">How Black Holes warp space-time & event horizons</div>
                 </button>
-                <button (click)="quickStart('Confidence Affirmations')" class="p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-700 transition-all text-left shadow-sm dark:shadow-none">
-                  "Confidence Affirmations"
-                </button>
-             </div>
+
+              </div>
+            </div>
+
           </div>
         </div>
       </main>
@@ -170,23 +225,63 @@ import { CommonModule } from '@angular/common';
   `
 })
 export class DashboardComponent {
-  public api: ApiService = inject(ApiService);
-  public router: Router = inject(Router);
-  public themeService: ThemeService = inject(ThemeService);
-  private fb: FormBuilder = inject(FormBuilder);
+  public api = inject(ApiService);
+  public router = inject(Router);
+  public themeService = inject(ThemeService);
+  private fb = inject(FormBuilder);
 
   isProcessing = signal(false);
+  sidebarOpen = signal(false);
 
   chatForm = this.fb.group({
     prompt: ['', Validators.required],
-    category: ['explainer_shorts'],
+    category: ['frequency_generator'],
     style: ['family_guy'],
-    aspectRatio: ['16:9'],
+    aspectRatio: ['9:16'],
     duration: ['short']
   });
 
-  quickStart(prompt: string) {
-    this.chatForm.patchValue({ prompt });
+  frequencyChips: FrequencyChip[] = [
+    { label: '432 Hz', sub: 'Harmonic', prompt: '432 Hz pure harmonic tone with 10 Hz Alpha beat for calm focus' },
+    { label: '528 Hz', sub: 'Clarity', prompt: '528 Hz harmonic frequency with 10 Hz Alpha flow state' },
+    { label: 'Alpha 10Hz', sub: 'Flow State', prompt: 'Alpha brainwave entrainment (10 Hz) with 432 Hz carrier for deep flow' },
+    { label: 'Theta 6Hz', sub: 'Meditation', prompt: 'Theta wave meditation beat (6 Hz) with 528 Hz carrier for mindfulness' },
+    { label: 'Delta 2.5Hz', sub: 'Rest', prompt: 'Delta frequency (2.5 Hz) with 108 Hz carrier for deep restorative sleep' },
+    { label: 'Gamma 40Hz', sub: 'Peak Focus', prompt: '40 Hz Gamma binaural beat for intense study and peak cognition' },
+    { label: 'Schumann 7.83Hz', sub: 'Earth Resonance', prompt: 'Schumann resonance (7.83 Hz) with 432 Hz harmonic carrier' },
+  ];
+
+  isFrequency(): boolean {
+    return this.chatForm.get('category')?.value === 'frequency_generator';
+  }
+
+  getPlaceholderText(): string {
+    return this.isFrequency()
+      ? "Enter carrier frequency and beat (e.g. '432 Hz carrier tone with 10 Hz Alpha binaural beat for deep coding flow')..."
+      : "Enter topic (e.g. 'How Einstein and Bohr debated quantum entanglement and action at a distance')...";
+  }
+
+  setCategory(category: 'explainer_shorts' | 'frequency_generator') {
+    this.chatForm.patchValue({ category });
+  }
+
+  applyFrequencyChip(chip: FrequencyChip) {
+    this.chatForm.patchValue({ prompt: chip.prompt });
+  }
+
+  quickStartFrequency(prompt: string) {
+    this.chatForm.patchValue({ 
+      category: 'frequency_generator',
+      prompt 
+    });
+    this.startChat();
+  }
+
+  quickStartShort(prompt: string) {
+    this.chatForm.patchValue({ 
+      category: 'explainer_shorts',
+      prompt 
+    });
     this.startChat();
   }
 
@@ -196,24 +291,19 @@ export class DashboardComponent {
     this.isProcessing.set(true);
     const { prompt, category, style, aspectRatio, duration } = this.chatForm.value;
     
-    // Map category to generator_id
     let generatorId = 'family_guy';
     if (category === 'explainer_shorts') {
       generatorId = style || 'family_guy';
     } else if (category === 'frequency_generator') {
       generatorId = 'frequency';
-    } else if (category === 'subliminal') {
-      generatorId = 'subliminal';
     }
 
     try {
-      // Create project first
       const project = await this.api.createProject({ 
         name: (prompt || 'New Video').substring(0, 50),
         description: prompt || ''
       });
       
-      // Start video generation (don't await, let it run in background)
       this.api.generateVideo({
         project_id: project._id,
         generator_id: generatorId,
@@ -224,7 +314,6 @@ export class DashboardComponent {
         quality: '1080p'
       }).catch(err => console.error('Video generation error:', err));
       
-      // Navigate immediately to project page where user can see progress
       await this.router.navigate(['/projects', project._id]);
     } catch (err) {
       console.error(err);

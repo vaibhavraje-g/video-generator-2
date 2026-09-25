@@ -8,57 +8,78 @@ import { ApiService } from '../services/api.service';
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink],
   template: `
-    <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
-      <div class="w-full max-w-md space-y-8">
-        <div class="text-center">
-          <h2 class="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Create your account</h2>
-          <p class="mt-2 text-sm text-gray-600 dark:text-slate-400">
-            Already have an account?
-            <a routerLink="/login" class="font-medium text-amber-600 hover:text-amber-500 dark:text-amber-500 dark:hover:text-amber-400">
-              Sign in
-            </a>
-          </p>
+    <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[#131314] text-[#E3E3E3] font-sans">
+      <div class="w-full max-w-sm space-y-6">
+        <!-- Brand Header -->
+        <div class="text-center space-y-2">
+          <div class="mx-auto w-10 h-10 rounded-md bg-[#D97757] flex items-center justify-center text-white shadow-sm">
+            <svg class="w-5 h-5 text-[#FAF8F5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-xl font-editorial font-semibold tracking-tight text-[#F1F3F4]">Create Account</h2>
+            <p class="text-xs text-[#80868B] mt-1">
+              Join VidGen AI Studio
+            </p>
+          </div>
         </div>
 
-        <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="mt-8 space-y-6">
-          <div class="space-y-4 rounded-md shadow-sm">
+        <!-- Register Surface -->
+        <div class="app-surface rounded-lg p-6 bg-[#1E1F20] border border-[#2E3135] shadow-sm">
+          <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="space-y-4">
             <div>
-              <label for="username" class="sr-only">Username</label>
-              <input id="username" type="text" formControlName="username" class="relative block w-full rounded-lg border-0 bg-white dark:bg-slate-900 py-3 px-3 text-gray-900 dark:text-white ring-1 ring-inset ring-gray-300 dark:ring-slate-800 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-amber-500 sm:text-sm sm:leading-6 transition-colors" placeholder="Username">
+              <label for="username" class="block text-xs font-medium text-[#BDC1C6] mb-1.5">Username</label>
+              <input id="username" type="text" formControlName="username" 
+                     class="app-input w-full rounded-md py-2 px-3 text-[#F1F3F4] text-sm placeholder-[#5F6368] border border-[#3C4043] bg-[#18191B] focus:border-[#D97757] focus:outline-none focus:ring-1 focus:ring-[#D97757] transition-colors" 
+                     placeholder="johndoe">
             </div>
-            <div>
-              <label for="email" class="sr-only">Email address</label>
-              <input id="email" type="email" formControlName="email" class="relative block w-full rounded-lg border-0 bg-white dark:bg-slate-900 py-3 px-3 text-gray-900 dark:text-white ring-1 ring-inset ring-gray-300 dark:ring-slate-800 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-amber-500 sm:text-sm sm:leading-6 transition-colors" placeholder="Email address">
-            </div>
-            <div>
-              <label for="password" class="sr-only">Password</label>
-              <input id="password" type="password" formControlName="password" class="relative block w-full rounded-lg border-0 bg-white dark:bg-slate-900 py-3 px-3 text-gray-900 dark:text-white ring-1 ring-inset ring-gray-300 dark:ring-slate-800 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-amber-500 sm:text-sm sm:leading-6 transition-colors" placeholder="Password (min 6 chars)">
-            </div>
-          </div>
 
-          @if (error()) {
-            <div class="rounded-md bg-red-50 dark:bg-red-900/20 p-4">
-              <div class="flex">
-                <div class="ml-3">
-                  <h3 class="text-sm font-medium text-red-800 dark:text-red-400">{{ error() }}</h3>
-                </div>
+            <div>
+              <label for="email" class="block text-xs font-medium text-[#BDC1C6] mb-1.5">Email address</label>
+              <input id="email" type="email" formControlName="email" 
+                     class="app-input w-full rounded-md py-2 px-3 text-[#F1F3F4] text-sm placeholder-[#5F6368] border border-[#3C4043] bg-[#18191B] focus:border-[#D97757] focus:outline-none focus:ring-1 focus:ring-[#D97757] transition-colors" 
+                     placeholder="name@company.com">
+            </div>
+
+            <div>
+              <label for="password" class="block text-xs font-medium text-[#BDC1C6] mb-1.5">Password</label>
+              <input id="password" type="password" formControlName="password" 
+                     class="app-input w-full rounded-md py-2 px-3 text-[#F1F3F4] text-sm placeholder-[#5F6368] border border-[#3C4043] bg-[#18191B] focus:border-[#D97757] focus:outline-none focus:ring-1 focus:ring-[#D97757] transition-colors" 
+                     placeholder="Minimum 6 characters">
+            </div>
+
+            @if (error()) {
+              <div class="rounded-md bg-[#F28B82]/10 border border-[#F28B82]/30 p-2.5 text-center">
+                <p class="text-xs font-medium text-[#F28B82]">{{ error() }}</p>
               </div>
-            </div>
-          }
+            }
 
-          <div>
-            <button type="submit" [disabled]="isLoading()" class="group relative flex w-full justify-center rounded-lg bg-amber-600 px-3 py-3 text-sm font-semibold text-white hover:bg-amber-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 disabled:opacity-50 transition-all">
-              @if (isLoading()) {
-                <span class="absolute left-0 inset-y-0 flex items-center pl-3">
-                   <!-- Spinner -->
-                </span>
-                Creating account...
-              } @else {
-                Register
-              }
-            </button>
+            <div class="pt-2">
+              <button type="submit" [disabled]="isLoading() || registerForm.invalid" 
+                      class="btn-primary w-full flex justify-center items-center py-2.5 px-4 rounded-md text-xs font-medium focus-visible:ring-2 focus-visible:ring-[#D97757] disabled:opacity-50">
+                @if (isLoading()) {
+                  <span class="flex items-center gap-2">
+                    <svg class="animate-spin h-3.5 w-3.5 text-[#FAF8F5]" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creating account...
+                  </span>
+                } @else {
+                  Create Account
+                }
+              </button>
+            </div>
+          </form>
+
+          <div class="mt-5 pt-4 border-t border-[#2E3135] text-center">
+            <a routerLink="/login" class="text-xs text-[#80868B] hover:text-[#FAF8F5] transition-colors">
+              Already have an account? <span class="font-medium text-[#D97757] hover:text-[#C16446]">Sign in</span>
+            </a>
           </div>
-        </form>
+        </div>
+
       </div>
     </div>
   `

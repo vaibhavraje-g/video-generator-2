@@ -4,10 +4,17 @@ from typing import Dict
 
 
 class Settings(BaseSettings):
-    # --- Core API ---
+    # --- Core API & Environment ---
+    ENVIRONMENT: str = "development"
     API_HOST: str = "0.0.0.0"
-    API_PORT: int = 8001
+    API_PORT: int = 8000
     DEBUG: bool = False
+    ALLOWED_ORIGINS: list[str] = [
+        "http://localhost:4200",
+        "http://127.0.0.1:4200",
+        "http://localhost:3000",
+        "https://*.vercel.app"
+    ]
 
     # --- Database ---
     MONGODB_URL: str = "mongodb://localhost:27017"
@@ -18,13 +25,30 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    ENABLE_RATE_LIMITING: bool = True
 
-    # --- API Keys ---
+    # --- Cloud Architecture & 0-Cost Pipeline ---
+    STORAGE_BACKEND: str = "local"  # "local", "s3", or "r2"
+    S3_BUCKET_NAME: str = ""
+    S3_ENDPOINT_URL: str | None = None  # Cloudflare R2 endpoint URL
+    AWS_REGION: str = "us-east-1"
+    QUEUE_BACKEND: str = "local"  # "local" (in-memory async) or "sqs"
+    SQS_QUEUE_URL: str = ""
+    SNS_TOPIC_ARN: str = ""
+    ECS_CLUSTER_NAME: str = ""
+    ECS_TASK_DEFINITION: str = ""
+    ECS_SUBNET_IDS: list[str] = []
+
+    # --- API Keys & Multi-Model Providers ---
     GEMINI_API_KEY: str | None = None
     PIXABAY_API_KEY: str | None = None
+    META_API_KEY: str | None = None
+    META_API_BASE: str = "https://api.meta.ai/v1"
+    GROQ_API_KEY: str | None = None
 
     # --- LLM Config ---
     GEMINI_MODEL: str = "gemini-2.5-flash"
+    PRIMARY_LLM_PROVIDER: str = "auto"  # "auto", "meta_muse", "gemini", "groq"
 
     # --- Video backend ---
     COMPOSE_BACKEND: str = "moviepy"  # or "ffmpeg"

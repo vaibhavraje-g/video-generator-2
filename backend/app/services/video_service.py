@@ -13,15 +13,20 @@ from app.generators import GeneratorRegistry
 from app.generators.base import VideoConfig, AspectRatio, VideoDuration, OutputFormat, VideoQuality
 from app.core.config import settings
 from app.websocket import connection_manager
+from app.middleware.security import sanitize_text_input, validate_safe_url
 
-# Placeholder ObjectId for dev mode bypass
+# Placeholder ObjectId for dev mode bypass (strictly restricted to development)
 DEV_USER_OBJECT_ID = ObjectId("000000000000000000000001")
 
 
 def _get_oid(id_str: str) -> ObjectId:
-    """Safely convert string ID to ObjectId, handling dev mode"""
+    """Safely convert string ID to ObjectId, strictly gating dev mode."""
     if id_str == "dev_user_id":
+        if settings.ENVIRONMENT != "development" and not settings.DEBUG:
+            raise ValueError("Development user bypass is disabled in production")
         return DEV_USER_OBJECT_ID
+    if not ObjectId.is_valid(id_str):
+        raise ValueError(f"Invalid ObjectId format: {id_str}")
     return ObjectId(id_str)
 
 
@@ -42,15 +47,24 @@ class VideoService:
         generator_config: Optional[Dict[str, Any]] = None
     ) -> Video:
         """
-        Create a video record in the database
+        Create a video record in the database with sanitized topic input.
         """
+        clean_topic = sanitize_text_input(topic)
+        if not clean_topic:
+            raise ValueError("Video topic cannot be empty after sanitization")
+
+        # Validate custom background URL if provided (SSRF guard)
+        gen_cfg = generator_config or {}
+        if gen_cfg.get("background") == "custom" and gen_cfg.get("background_url"):
+            validate_safe_url(gen_cfg["background_url"])
+
         video_dict = {
-            "project_id": ObjectId(project_id),
+            "project_id": _get_oid(project_id),
             "user_id": _get_oid(user_id),
-            "topic": topic,
+            "topic": clean_topic,
             "generator_id": generator_id,
             "video_config": video_config or {},
-            "generator_config": generator_config or {},
+            "generator_config": gen_cfg,
             "status": VideoStatus.PENDING,
             "progress": 0,
             "current_step": "Queued",

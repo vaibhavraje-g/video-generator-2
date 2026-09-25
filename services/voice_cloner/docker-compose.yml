@@ -1,0 +1,19 @@
+# services/voice_cloner/docker-compose.yml
+version: '3.8'
+
+services:
+  voice-cloner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: vidgen-voice-cloner:latest
+    container_name: vidgen-voice-cloner
+    ports:
+      - "8004:8004"
+    volumes:
+      # Mount voices directory to persist custom voice samples across restarts
+      - ./voices:/app/voices
+    environment:
+      - PORT=8004
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

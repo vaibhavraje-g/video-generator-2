@@ -20,7 +20,9 @@ class ChatterboxClient:
             base_url: Base URL of the Chatterbox TTS server.
             **kwargs: Extra arguments for compatibility (e.g., character_voices, api_key, etc.)
         """
-        self.base_url = base_url.rstrip("/")
+        import os
+        resolved_base = os.environ.get("CHATTERBOX_BASE_URL") or base_url
+        self.base_url = resolved_base.rstrip("/")
 
         # store optional mappings or metadata (for backward compatibility)
         self.character_voices = kwargs.get("character_voices", {})

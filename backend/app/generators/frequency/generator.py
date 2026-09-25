@@ -408,7 +408,7 @@ class FrequencyGenerator(BaseVideoGenerator):
                     await progress_callback(step, progress)
                 else:
                     progress_callback(step, progress)
-            print(f"🎵 [{int(progress * 100)}%] {step}")
+            print(f"[FREQ] [{int(progress * 100)}%] {step}")
 
         # 1. Parameter extraction from prompt
         await report_progress("Acoustic DSP Analysis: Extracting carrier & brainwave target...", 0.10)
@@ -417,13 +417,13 @@ class FrequencyGenerator(BaseVideoGenerator):
         beat_hz = params["beat_hz"]
 
         # Determine duration
-        total_duration = 60 if video_config.duration == VideoDuration.SHORT else 300
+        total_duration = 60 if str(video_config.duration).lower() in ("short", VideoDuration.SHORT.value) else 300
 
         # Video dimensions
-        aspect = video_config.aspect_ratio
-        if aspect == AspectRatio.LANDSCAPE:
+        aspect = str(video_config.aspect_ratio.value if hasattr(video_config.aspect_ratio, "value") else video_config.aspect_ratio)
+        if aspect in (AspectRatio.HORIZONTAL.value, "16:9", "horizontal", "landscape"):
             width, height = 1920, 1080
-        elif aspect == AspectRatio.SQUARE:
+        elif aspect in (AspectRatio.SQUARE.value, "1:1", "square"):
             width, height = 1080, 1080
         else:
             width, height = 1080, 1920
@@ -519,7 +519,7 @@ class FrequencyGenerator(BaseVideoGenerator):
                 "acoustic_engine": "Native FFmpeg DSP + Lissajous Vectorscope",
                 "audio_format": "320kbps Lossless AAC Stereo Binaural",
                 "video_resolution": f"{width}x{height}",
-                "aspect_ratio": aspect.value,
+                "aspect_ratio": aspect,
                 "project_dir": str(project_dir)
             }
         )

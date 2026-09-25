@@ -179,7 +179,33 @@ class FrequencyService:
         num_samples = int(self.SAMPLE_RATE * duration_seconds)
         right_frequency = base_frequency + beat_frequency
         
-        # Prepare stereo data
+        try:
+            import numpy as np
+            t = np.linspace(0, duration_seconds, num_samples, endpoint=False, dtype=np.float32)
+            left = (amplitude * np.sin(2 * np.pi * base_frequency * t)).astype(np.float32)
+            right = (amplitude * np.sin(2 * np.pi * right_frequency * t)).astype(np.float32)
+            fade_len = int(1.0 * self.SAMPLE_RATE)
+            if 0 < fade_len < num_samples:
+                fade_in_curve = np.linspace(0.0, 1.0, fade_len, dtype=np.float32)
+                left[:fade_len] *= fade_in_curve
+                right[:fade_len] *= fade_in_curve
+                left[-fade_len:] *= fade_in_curve[::-1]
+                right[-fade_len:] *= fade_in_curve[::-1]
+            left_16 = np.int16(np.clip(left * 32767, -32768, 32767))
+            right_16 = np.int16(np.clip(right * 32767, -32768, 32767))
+            stereo = np.empty((num_samples * 2,), dtype=np.int16)
+            stereo[0::2] = left_16
+            stereo[1::2] = right_16
+            with wave.open(output_path, 'wb') as wav_file:
+                wav_file.setnchannels(2)
+                wav_file.setsampwidth(2)
+                wav_file.setframerate(self.SAMPLE_RATE)
+                wav_file.writeframes(stereo.tobytes())
+            return output_path
+        except Exception:
+            pass
+
+        # Prepare stereo data (pure python fallback)
         with wave.open(output_path, 'w') as wav_file:
             wav_file.setnchannels(2)  # Stereo
             wav_file.setsampwidth(2)  # 16-bit

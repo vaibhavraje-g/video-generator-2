@@ -35,8 +35,13 @@ def clean_json_response(text: str) -> str:
     return cleaned
 
 
+_META_DISABLED = False
+
 async def call_meta_muse_api(prompt: str, format_instructions: str) -> Optional[str]:
     """Call Meta Model API (Muse Spark) via OpenAI-compatible endpoint."""
+    global _META_DISABLED
+    if _META_DISABLED:
+        return None
     api_key = settings.META_API_KEY
     if not api_key:
         return None
@@ -58,7 +63,7 @@ async def call_meta_muse_api(prompt: str, format_instructions: str) -> Optional[
     }
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             res = await client.post(
                 f"{settings.META_API_BASE}/chat/completions",
                 json=payload,
@@ -67,6 +72,11 @@ async def call_meta_muse_api(prompt: str, format_instructions: str) -> Optional[
             if res.status_code == 200:
                 data = res.json()
                 return data["choices"][0]["message"]["content"]
+            elif res.status_code in (401, 402, 403):
+                _META_DISABLED = True
+                logger.warning(
+                    f"Meta Model API authentication/billing disabled (status {res.status_code}). Switching to zero-cost cloud LLM."
+                )
             else:
                 logger.warning(
                     f"Meta Model API returned status {res.status_code}: {res.text[:100]}. Falling back."
@@ -123,14 +133,14 @@ async def call_pollinations_api(prompt: str, format_instructions: str) -> Option
         "messages": [
             {
                 "role": "system",
-                "content": f"You are an expert video screenwriter. Always respond strictly in valid JSON format matching the schema.\n{format_instructions}",
+                "content": f"You are an expert viral video screenwriter. Always respond strictly in valid JSON format matching the schema.\n{format_instructions}",
             },
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.7,
     }
     try:
-        async with httpx.AsyncClient(timeout=25.0) as client:
+        async with httpx.AsyncClient(timeout=12.0) as client:
             res = await client.post(
                 "https://text.pollinations.ai/openai/chat/completions",
                 json=payload,
@@ -158,45 +168,53 @@ async def invoke_llm_with_prompt(
 
     parser = PydanticOutputParser(pydantic_object=response_model)
     format_instructions = parser.get_format_instructions()
-    retries = max_retries or settings.MAX_LLM_RETRIES
 
-    for attempt in range(retries):
-        ai_response = None
-
-        # 1. Try Meta Model API (Muse Spark) if configured
-        if settings.META_API_KEY:
-            ai_response = await call_meta_muse_api(prompt, format_instructions)
-
-        # 2. Try Google Gemini if configured
-        if not ai_response and settings.GEMINI_API_KEY:
-            try:
-                ai_response = await call_gemini_api(prompt, response_model, model_name)
-            except Exception as e:
-                logger.warning(f"Gemini API error (attempt {attempt + 1}): {e}")
-
-        # 3. Try Pollinations AI (Zero-auth, free cloud LLM)
-        if not ai_response:
-            ai_response = await call_pollinations_api(prompt, format_instructions)
-
+    # 1. Try Meta Model API (Muse Spark) if configured
+    if settings.META_API_KEY and not _META_DISABLED:
+        ai_response = await call_meta_muse_api(prompt, format_instructions)
         if ai_response:
             cleaned = clean_json_response(ai_response)
-
-            # Try Pydantic parse
             try:
                 return parser.parse(cleaned).model_dump()
-            except ValidationError as ve:
-                logger.warning(f"Pydantic validation retry (attempt {attempt + 1}): {ve}")
+            except Exception:
+                try:
+                    pj = json.loads(cleaned)
+                    if isinstance(pj, dict):
+                        return pj
+                except Exception:
+                    pass
 
-            # Try JSON parse
+    # 2. Try Google Gemini if configured
+    if settings.GEMINI_API_KEY:
+        try:
+            ai_response = await call_gemini_api(prompt, response_model, model_name)
+            if ai_response:
+                cleaned = clean_json_response(ai_response)
+                try:
+                    return parser.parse(cleaned).model_dump()
+                except Exception:
+                    try:
+                        pj = json.loads(cleaned)
+                        if isinstance(pj, dict):
+                            return pj
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.warning(f"Gemini API error: {e}")
+
+    # 3. Try Pollinations AI (Zero-auth, free cloud LLM)
+    ai_response = await call_pollinations_api(prompt, format_instructions)
+    if ai_response:
+        cleaned = clean_json_response(ai_response)
+        try:
+            return parser.parse(cleaned).model_dump()
+        except Exception:
             try:
-                parsed_json = json.loads(cleaned)
-                if isinstance(parsed_json, dict):
-                    return parsed_json
-            except json.JSONDecodeError as je:
-                logger.warning(f"JSON decode failed (attempt {attempt + 1}): {je}")
-
-        if attempt < retries - 1:
-            await asyncio.sleep(settings.RETRY_DELAY)
+                pj = json.loads(cleaned)
+                if isinstance(pj, dict):
+                    return pj
+            except Exception:
+                pass
 
     # 4. Autonomous Dynamic Heuristic Synthesizer Fallback (Zero-Downtime Guarantee)
     logger.info("Engaging dynamic topic-aware heuristic script generator fallback.")

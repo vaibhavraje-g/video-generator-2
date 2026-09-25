@@ -75,15 +75,24 @@ async def generate_video(
         quality=request.quality
     )
     
-    # Create video record
-    video = await video_service.create_video_record(
-        project_id=request.project_id,
-        user_id=str(current_user.id),
-        topic=request.topic,
-        generator_id=request.generator_id,
-        video_config=video_config.model_dump(),
-        generator_config=request.generator_config or {}
-    )
+    tenant_id = getattr(current_user, "tenant_id", None) or str(current_user.id)
+
+    # Create video record with tenant validation
+    try:
+        video = await video_service.create_video_record(
+            project_id=request.project_id,
+            user_id=str(current_user.id),
+            tenant_id=tenant_id,
+            topic=request.topic,
+            generator_id=request.generator_id,
+            video_config=video_config.model_dump(),
+            generator_config=request.generator_config or {}
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     
     # Schedule video generation in background using thread pool
     # This prevents blocking calls (moviepy) from freezing the event loop
@@ -104,6 +113,7 @@ async def generate_video(
         _id=str(video.id),
         project_id=str(video.project_id),
         user_id=str(video.user_id),
+        tenant_id=video.tenant_id,
         topic=video.topic,
         generator_id=video.generator_id,
         video_config=video.video_config,
@@ -125,24 +135,26 @@ async def get_video(
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Get video details
+    Get video details with tenant ownership verification
     
     Returns:
         Video information
     """
     video_service = VideoService()
-    video = await video_service.get_video(video_id, str(current_user.id))
+    tenant_id = getattr(current_user, "tenant_id", None) or str(current_user.id)
+    video = await video_service.get_video(video_id, str(current_user.id), tenant_id=tenant_id)
     
     if not video:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Video not found"
+            detail="Video not found or access denied"
         )
     
     return VideoResponse(
         _id=str(video.id),
         project_id=str(video.project_id),
         user_id=str(video.user_id),
+        tenant_id=video.tenant_id,
         topic=video.topic,
         generator_id=video.generator_id,
         video_config=video.video_config,

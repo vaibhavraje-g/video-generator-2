@@ -42,6 +42,7 @@ async def register(user_data: UserCreate):
             _id=str(user.id),
             email=user.email,
             username=user.username,
+            tenant_id=user.tenant_id or str(user.id),
             is_active=user.is_active,
             created_at=user.created_at,
         )
@@ -87,6 +88,7 @@ async def get_me(current_user: User = Depends(get_current_active_user)):
         _id=str(current_user.id),
         email=current_user.email,
         username=current_user.username,
+        tenant_id=current_user.tenant_id or str(current_user.id),
         is_active=current_user.is_active,
         created_at=current_user.created_at,
     )

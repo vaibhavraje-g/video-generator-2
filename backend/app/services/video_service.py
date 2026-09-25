@@ -44,14 +44,27 @@ class VideoService:
         topic: str, 
         generator_id: str = "family_guy",
         video_config: Optional[Dict[str, Any]] = None,
-        generator_config: Optional[Dict[str, Any]] = None
+        generator_config: Optional[Dict[str, Any]] = None,
+        tenant_id: Optional[str] = None
     ) -> Video:
         """
-        Create a video record in the database with sanitized topic input.
+        Create a video record in the database with sanitized topic input and multi-tenant validation.
         """
         clean_topic = sanitize_text_input(topic)
         if not clean_topic:
             raise ValueError("Video topic cannot be empty after sanitization")
+
+        active_tenant = tenant_id or user_id
+        project_oid = _get_oid(project_id)
+        user_oid = _get_oid(user_id)
+
+        # Multi-tenant cross-boundary guard: Verify project ownership for tenant
+        project = await self.db.projects.find_one({
+            "_id": project_oid,
+            "$or": [{"tenant_id": active_tenant}, {"user_id": user_oid}]
+        })
+        if not project:
+            raise ValueError(f"Project '{project_id}' not found or access denied for tenant")
 
         # Validate custom background URL if provided (SSRF guard)
         gen_cfg = generator_config or {}
@@ -59,8 +72,9 @@ class VideoService:
             validate_safe_url(gen_cfg["background_url"])
 
         video_dict = {
-            "project_id": _get_oid(project_id),
-            "user_id": _get_oid(user_id),
+            "project_id": project_oid,
+            "user_id": user_oid,
+            "tenant_id": active_tenant,
             "topic": clean_topic,
             "generator_id": generator_id,
             "video_config": video_config or {},
@@ -77,6 +91,7 @@ class VideoService:
         video_dict["_id"] = str(result.inserted_id)
         video_dict["project_id"] = str(video_dict["project_id"])
         video_dict["user_id"] = str(video_dict["user_id"])
+        video_dict["tenant_id"] = active_tenant
         
         return Video(**video_dict)
     
@@ -135,6 +150,8 @@ class VideoService:
         video_dict["_id"] = str(video_dict["_id"])
         video_dict["project_id"] = str(video_dict["project_id"])
         video_dict["user_id"] = str(video_dict["user_id"])
+        if "tenant_id" not in video_dict or not video_dict["tenant_id"]:
+            video_dict["tenant_id"] = str(video_dict["user_id"])
         return video_dict
     
     async def generate_video(self, video_id: str) -> Video:
@@ -258,16 +275,24 @@ class VideoService:
             print(f"❌ Video generation failed for {video_id}: {error_msg}")
             raise
     
-    async def get_video(self, video_id: str, user_id: str) -> Optional[Video]:
-        """Get a video with ownership verification"""
+    async def get_video(self, video_id: str, user_id: str, tenant_id: Optional[str] = None) -> Optional[Video]:
+        """Get a video with tenant ownership verification"""
         if not ObjectId.is_valid(video_id):
             return None
         
-        video_dict = await self.videos_collection.find_one({
-            "_id": ObjectId(video_id),
-            "user_id": _get_oid(user_id)
-        })
+        user_oid = _get_oid(user_id)
+        if tenant_id:
+            query = {
+                "_id": ObjectId(video_id),
+                "$or": [
+                    {"tenant_id": tenant_id},
+                    {"tenant_id": {"$exists": False}, "user_id": user_oid}
+                ]
+            }
+        else:
+            query = {"_id": ObjectId(video_id), "user_id": user_oid}
         
+        video_dict = await self.videos_collection.find_one(query)
         if not video_dict:
             return None
         

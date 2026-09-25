@@ -40,6 +40,7 @@ class UserBase(BaseModel):
     email: EmailStr
     username: str
     is_active: bool = True
+    tenant_id: Optional[str] = None
 
 
 class UserCreate(UserBase):
@@ -50,6 +51,7 @@ class UserCreate(UserBase):
 class UserInDB(UserBase):
     """User model as stored in database"""
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    tenant_id: Optional[str] = None
     hashed_password: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -63,6 +65,7 @@ class UserInDB(UserBase):
 class UserResponse(UserBase):
     """User response model (without password)"""
     id: str = Field(alias="_id")
+    tenant_id: Optional[str] = None
     created_at: datetime
     
     class Config:

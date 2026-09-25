@@ -36,6 +36,7 @@ async def get_current_user(
             _id="000000000000000000000001",
             email="dev@vidgen.ai",
             username="developer",
+            tenant_id="dev_tenant_001",
             is_active=True,
             hashed_password="dev_mode_no_password"
         )

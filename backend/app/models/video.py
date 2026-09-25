@@ -52,6 +52,7 @@ class VideoInDB(VideoBase):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     project_id: PyObjectId
     user_id: PyObjectId
+    tenant_id: Optional[str] = None
     video_url: Optional[str] = None
     file_path: Optional[str] = None
     status: VideoStatus = VideoStatus.PENDING
@@ -73,6 +74,7 @@ class VideoResponse(BaseModel):
     id: str = Field(alias="_id")
     project_id: str
     user_id: str
+    tenant_id: Optional[str] = None
     topic: str
     generator_id: str
     video_config: Optional[VideoConfigModel] = None

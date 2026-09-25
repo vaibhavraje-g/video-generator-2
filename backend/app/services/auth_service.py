@@ -40,12 +40,19 @@ class AuthService:
             "username": user_data.username,
             "hashed_password": get_password_hash(user_data.password),
             "is_active": True,
+            "tenant_id": user_data.tenant_id,
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow(),
         }
         
         result = await self.users_collection.insert_one(user_dict)
         user_dict["_id"] = result.inserted_id
+        if not user_dict.get("tenant_id"):
+            user_dict["tenant_id"] = str(result.inserted_id)
+            await self.users_collection.update_one(
+                {"_id": result.inserted_id},
+                {"$set": {"tenant_id": str(result.inserted_id)}}
+            )
         
         return User(**user_dict)
     
@@ -59,6 +66,9 @@ class AuthService:
         if not verify_password(password, user_dict["hashed_password"]):
             return None
         
+        if not user_dict.get("tenant_id"):
+            user_dict["tenant_id"] = str(user_dict["_id"])
+            
         return User(**user_dict)
     
     async def get_user_by_id(self, user_id: str) -> Optional[User]:
@@ -69,6 +79,7 @@ class AuthService:
                 _id="dev_user_id",
                 email="dev@vidgen.ai",
                 username="developer",
+                tenant_id="dev_tenant_001",
                 hashed_password="hashed_bypass_password",
                 is_active=True,
                 created_at=datetime.utcnow(),
@@ -83,6 +94,9 @@ class AuthService:
         if not user_dict:
             return None
         
+        if not user_dict.get("tenant_id"):
+            user_dict["tenant_id"] = str(user_dict["_id"])
+        
         return User(**user_dict)
     
     async def get_user_by_email(self, email: str) -> Optional[User]:
@@ -92,11 +106,19 @@ class AuthService:
         if not user_dict:
             return None
         
+        if not user_dict.get("tenant_id"):
+            user_dict["tenant_id"] = str(user_dict["_id"])
+            
         return User(**user_dict)
     
     def create_tokens(self, user: User) -> Dict[str, str]:
-        """Create access and refresh tokens for a user"""
-        token_data = {"sub": str(user.id), "email": user.email}
+        """Create access and refresh tokens for a user with tenant_id claim"""
+        user_tenant = getattr(user, "tenant_id", None) or str(user.id)
+        token_data = {
+            "sub": str(user.id),
+            "email": user.email,
+            "tenant_id": user_tenant
+        }
         
         access_token = create_access_token(token_data)
         refresh_token = create_refresh_token(token_data)

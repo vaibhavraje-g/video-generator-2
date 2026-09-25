@@ -24,6 +24,7 @@ class ProjectInDB(ProjectBase):
     """Project model as stored in database"""
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     user_id: PyObjectId
+    tenant_id: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
@@ -37,6 +38,7 @@ class ProjectResponse(ProjectBase):
     """Project response model"""
     id: str = Field(alias="_id")
     user_id: str
+    tenant_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     
